@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from data_provider.data_factory import data_provider
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from engine import Engine
 
 parser = argparse.ArgumentParser(description="NEMoTS Arguments")

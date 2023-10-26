@@ -74,8 +74,7 @@ class Engine(object):
         return state_batch, seq_batch, policy_batch, value_batch, length_indices
 
     def eval(self, data):
-        X, y = data[:, :self.args.seq_in], data[:, -self.args.seq_out:]
-        all_eqs, all_times, test_scores, test_data = self.model.run(X, y)
+        pass
 
 
 
