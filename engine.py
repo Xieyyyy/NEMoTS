@@ -1,4 +1,5 @@
 import math
+import math
 import random
 from collections import defaultdict
 
@@ -75,7 +76,6 @@ class Engine(object):
 
     def eval(self, data):
         pass
-
 
 
 class OptimizedMetrics:
