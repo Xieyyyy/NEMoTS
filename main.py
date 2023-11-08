@@ -1,12 +1,11 @@
 import argparse
-import logging
 import time
 
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
 
 from data_provider.data_factory import data_provider
-from torch.utils.tensorboard import SummaryWriter
 from engine import Engine
 
 parser = argparse.ArgumentParser(description="NEMoTS Arguments")
@@ -68,16 +67,8 @@ def get_data(args, flag):
 
 
 def write_log(info, file_dir):
-    logger = logging.getLogger('info_recorder')
-    logger.setLevel(logging.INFO)
-
-    if not logger.handlers:
-        handler = logging.FileHandler(file_dir)
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        logger.addHandler(handler)
-
-    logger.info(info)
+    with open(file_dir + ".txt", 'a') as file:
+        file.write(info + '\n')
 
 
 def main():

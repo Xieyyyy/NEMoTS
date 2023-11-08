@@ -255,7 +255,10 @@ class MCTS():
             if UC:
                 policy, value = self.get_policy3(nA, UC, seq, state, network, softmax=False)
                 policy = self.modify_UCB(policy, state)
-                action = np.random.choice(np.arange(nA), p=policy)
+                try:
+                    action = np.random.choice(np.arange(nA), p=policy)
+                except ValueError:
+                    action = np.random.choice(np.arange(nA), p=np.full(nA, 1 / nA))
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
                 if eq is not None:
                     state_records.append(state)
