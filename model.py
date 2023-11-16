@@ -5,7 +5,7 @@ import torch.nn as nn
 
 import score
 import symbolics
-from MCTSblock import MCTSBlock
+from mcts import MCTS
 
 
 class Model(nn.Module):
@@ -37,19 +37,23 @@ class Model(nn.Module):
         self.nt_nodes = symbolics.ntn_map[self.symbolic_lib]
         self.score_with_est = score.score_with_est
 
-    def forward(self, X, y):
+    def run(self, X, y=None):
 
-        count_success = True
         assert X.size(0) == 1
-        X = X.squeeze(0)
-        y = y.squeeze(0)
+        if y is not None:
+            X = X.squeeze(0)
+            y = y.squeeze(0)
 
-        time_idx = np.arange(X.size(0) + y.shape[0])
-        input_data = np.vstack([time_idx[:X.size(0)], X])
+            time_idx = np.arange(X.size(0) + y.shape[0])
+            input_data = np.vstack([time_idx[:X.size(0)], X])
 
-        supervision_data = np.vstack([time_idx, np.concatenate([X, y])])
+            supervision_data = np.vstack([time_idx, np.concatenate([X, y])])
+        else:
+            X = X.squeeze(0)
+            time_idx = np.arange(X.size(0))
+            input_data = np.vstack([time_idx[:X.size(0)], X])
+            supervision_data = np.vstack([time_idx, X])
 
-        num_success = 0
         all_times = []
         all_eqs = []
 
@@ -68,16 +72,16 @@ class Model(nn.Module):
             discovery_time = 0  # 初始化发现时间
 
             for i_itr in range(self.num_transplant):
-                mcts_block = MCTSBlock(data_sample=supervision_data,
-                                       base_grammars=self.grammars,
-                                       aug_grammars=aug_grammars,
-                                       nt_nodes=self.nt_nodes,
-                                       max_len=self.max_len,
-                                       max_module=max_module,
-                                       aug_grammars_allowed=self.num_aug,
-                                       func_score=self.score_with_est,
-                                       exploration_rate=self.exploration_rate,
-                                       eta=self.eta)
+                mcts_block = MCTS(data_sample=input_data,
+                                  base_grammars=self.grammars,
+                                  aug_grammars=aug_grammars,
+                                  nt_nodes=self.nt_nodes,
+                                  max_len=self.max_len,
+                                  max_module=max_module,
+                                  aug_grammars_allowed=self.num_aug,
+                                  func_score=self.score_with_est,
+                                  exploration_rate=self.exploration_rate,
+                                  eta=self.eta)
 
                 _, current_solution, good_modules = mcts_block.run(self.transplant_step,
                                                                    num_play=10,
@@ -109,7 +113,7 @@ class Model(nn.Module):
 
                 # 检查是否发现了解决方案。如果是，提前停止。
                 test_score = \
-                self.score_with_est(score.simplify_eq(best_solution[0]), 0, supervision_data, eta=self.eta)[0]
+                    self.score_with_est(score.simplify_eq(best_solution[0]), 0, supervision_data, eta=self.eta)[0]
                 if test_score >= 1 - self.norm_threshold:
                     num_success += 1
                     if discovery_time == 0:
@@ -123,10 +127,5 @@ class Model(nn.Module):
             print('test score: {}'.format(test_score))
             print()
 
-        # 计算成功率
-        success_rate = num_success / self.num_runs
-        if count_success:
-            print('success rate :', success_rate)
-
         # 返回所有发现的方程、成功率和运行时间
-        return all_eqs, success_rate, all_times, supervision_data
+        return all_eqs, all_times, supervision_data

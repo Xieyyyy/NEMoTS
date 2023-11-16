@@ -4,7 +4,7 @@ from collections import defaultdict
 import numpy as np
 
 
-class MCTSBlock():
+class MCTS():
     def __init__(self, data_sample, base_grammars, aug_grammars, nt_nodes, max_len, max_module, aug_grammars_allowed,
                  func_score, exploration_rate=1 / np.sqrt(2), eta=0.999):
         self.data_sample = data_sample

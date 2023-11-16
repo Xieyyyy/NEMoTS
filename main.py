@@ -3,13 +3,11 @@ import time
 
 import numpy as np
 import torch
-<<<<<<< Updated upstream
-=======
-# from torch.utils.tensorboard import SummaryWriter
->>>>>>> Stashed changes
 
 from data_provider.data_factory import data_provider
 from engine import Engine
+
+# from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description='PyTorch Time series forecasting')
 
@@ -44,9 +42,9 @@ parser.add_argument('--norm_threshold', type=float, default=1e-5)
 
 # -- training
 parser.add_argument("--seed", type=int, default=42, help='random seed')
-parser.add_argument("--epoch", type=int, default=200, help='epoch')
-parser.add_argument("--seq_in", type=int, default=48, help='length of input seq')
-parser.add_argument("--seq_out", type=int, default=48, help='length of output seq')
+parser.add_argument("--round", type=int, default=10, help='epoch')
+parser.add_argument("--seq_in", type=int, default=84, help='length of input seq')
+parser.add_argument("--seq_out", type=int, default=12, help='length of output seq')
 parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
 parser.add_argument("--batch_size", type=int, default=1, help='default')
 parser.add_argument("--lr", type=float, default=1e-6, help='learning rate')
@@ -72,9 +70,9 @@ def get_data(args, flag):
     return data_set, data_loader
 
 
-def record_info(info, file_dir):
-    with open(file_dir, 'a') as f:
-        f.writelines(info + "\n")
+def write_log(info, file_dir):
+    with open(file_dir + ".txt", 'a') as file:
+        file.write(info + '\n')
 
 
 def main():
@@ -82,18 +80,37 @@ def main():
     vali_data, vali_loader = get_data(args=args, flag='val')
     test_data, test_loader = get_data(args=args, flag='test')
 
+    if args.recording:
+        sw = SummaryWriter(comment=args.tag)
+        write_log(str(args), "./records/" + args.tag)
+        write_log(str(args), "./records/" + args.logtag)
+
     engine = Engine(args)
 
     print("start training...")
     train_time = []
-    for epoch_num in range(args.epoch + 1):
+    for round_num in range(args.round + 1):
         t1 = time.time()
         train_loss = 0
         train_n_samples = 0
+        train_maes, train_mses, train_corrs, test_maes, test_mses, test_corrs = [], [], [], [], [], []
         for iter, (data, _, _, _) in enumerate(train_loader):
             train_data = data[..., args.used_dimension].float()
-            metrics = engine.train(train_data)
-            break
+            best_exp, all_times, test_data, loss, mae, mse, corr = engine.train(train_data)
+            train_maes.append(mae)
+            train_mses.append(mse)
+            train_corrs.append(corr)
+            train_loss += loss
+            train_n_samples += 1
+
+            log = 'Iter: {:03d}, Train Loss: {:.4f}, Train MAE: {:.4f}, Train MSE: {:.4f}, Train CORR: {:.4f}'
+            print(log.format(iter, train_loss / train_n_samples, mae, mse, corr), flush=True)
+            if args.recording:
+                write_log(str(best_exp), "./records/" + args.tag)
+                write_log(str(test_data[1]), "./records/" + args.tag)
+                write_log(log.format(iter, train_loss / train_n_samples, mae, mse, corr), "./records/" + args.logtag)
+
+        torch.cuda.empty_cache()
 
 
 if __name__ == '__main__':
