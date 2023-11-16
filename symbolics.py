@@ -106,31 +106,10 @@ rule_map = {
                     ['A->A+A', 'A->A-A', 'A->A*A', 'A->A/A', 'A->A*C',
                      'A->x', 'A->y', 'A->z']),
 
-    'NEMoTS': ['A->A+A', 'A->A-A', 'A->A*A', 'A->A/A',
-               'A->x', 'A->cos(A)', 'A->sin(A)', 'A->exp(A)', 'A->A*C',
-               'A->log(A)', 'A->sqrt(A)']
 
-    # 'NEMoTS': [
-    #     'A->A+A', 'A->A-A', 'A->A*A', 'A->A/A',  # 基本算术运算
-    #     'A->x', 'A->cos(A)', 'A->sin(A)', 'A->exp(A)', 'A->A*C',  # 常见函数和操作
-    #     'A->log(A)', 'A->sqrt(A)',
-    #     'A->tan(A)',  # 正切函数
-    #     'A->cot(A)',  # 余切函数
-    #     'A->sec(A)',  # 正割函数
-    #     'A->csc(A)',  # 余割函数
-    #     'A->A^2',  # 平方
-    #     'A->A^3',  # 立方
-    #     'A->A^n',  # 幂运算
-    #     'A->|A|',  # 绝对值
-    #     'A->asin(A)',  # 反正弦函数
-    #     'A->acos(A)',  # 反余弦函数
-    #     'A->atan(A)',  # 反正切函数
-    #     'A->acot(A)',  # 反余切函数
-    #     'A->ln(A)',  # 自然对数
-    #     'A->log10(A)',  # 以10为底的对数
-    #     'A->logb(A, B)',  # 以B为底A的对数
-    #     'A->e^A',  # e的A次幂
-    # ]
+    'elec_small': ['A->A+A', 'A->A-A', 'A->A*A', 'A->A/A',
+                   'A->x', 'A->cos(A)', 'A->sin(A)', 'A->exp(A)', 'A->A*C',
+                   'A->log(A)', 'A->sqrt(A)']
 }
 
 ## non-terminal nodes for each task for SPL
@@ -157,7 +136,8 @@ ntn_map = {
     **dict.fromkeys(['dp_f1', 'dp_f2'], ['A', 'W', 'T', 'S']),
     **dict.fromkeys(['lorenz_x', 'lorenz_y', 'lorenz_z'], ['A']),
 
-    'NEMoTS': ['A']
+
+    'elec_small': ['A']
 }
 
 
