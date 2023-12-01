@@ -238,57 +238,25 @@ class MCTS():
             else:
                 state = ''
 
-    def get_policy1(self, nA, state, node):
-        """
-        Creates a policy based on ucb score.
-        这两个方法分别创建基于UCB分数的策略和用于选择未访问过的子节点的随机策略。
-        这个函数的目的是创建一个基于ucb(上限置信度边界)分数的策略。
-        """
-
+    def get_policy1(self, nA, state, node, network):
         valid_action = self.valid_prods(node)
-        # 根据给定的节点，找出所有的有效动作。
-
-        policy_valid = []
-        # 初始化一个空列表，用于存储所有有效动作的ucb分数。
-
+        policy_valid, _, _ = self.aquire_nn(state, network)
+        policy_valid = self.softmax(policy_valid.squeeze(0).cpu().detach().numpy()[:len(valid_action)])
         sum_ucb = sum(self.UCBs[state][valid_action])
-        # 计算所有有效动作的ucb分数的总和。
-
-        for a in valid_action:
-            # 对于每一个有效动作：
-
+        for idx, a in enumerate(valid_action):
             policy_mcts = self.UCBs[state][a] / sum_ucb
-            # 计算这个动作的ucb分数在总分中的比例，并赋值给policy_mcts。
-
-            policy_valid.append(policy_mcts)
-            # 将policy_mcts添加到policy_valid列表中。
+            policy_valid[idx] = policy_valid[idx] * policy_mcts
 
         if len(set(policy_valid)) == 1:
-            # 如果所有的ucb分数都相同：
-
             A = np.zeros(nA)
-            # 创建一个长度为nA的零向量A。
-
             A[valid_action] = float(1 / len(valid_action))
-            # 将所有有效动作对应的元素设为均匀概率。
-
             return A
-            # 返回概率向量A。
 
         A = np.zeros(nA, dtype=float)
-        # 创建一个长度为nA的零向量A。
-
         best_action = valid_action[np.argmax(policy_valid)]
-        # 找出具有最大ucb分数的动作，并赋值给best_action。
-
         A[best_action] += 0.8
-        # 将最佳动作对应的元素设为0.8。
-
         A[valid_action] += float(0.2 / len(valid_action))
-        # 将所有有效动作对应的元素平均分配剩余的0.2。
-
         return A
-        # 返回概率向量A。
 
     def get_policy2(self, nA, UC):
         """
@@ -300,6 +268,17 @@ class MCTS():
         A = np.zeros(nA, dtype=float)
         A[UC] += float(1 / len(UC))
         return A
+
+    def get_policy3(self, state, network, node, UC):
+        valid_action = self.valid_prods(node)
+        _, policy_expand, _ = self.aquire_nn(state, network)
+        policy_expand = policy_expand.squeeze(0).cpu().detach().numpy()[:len(valid_action)]
+        return self.softmax(policy_expand), self.softmax(policy_expand[UC])
+
+    def aquire_nn(self, state, network):
+        seq = self.data_sample
+        selection_dist_out, expand_dist_out, value_out = network.policy_value(seq, state)
+        return selection_dist_out, expand_dist_out, value_out
 
     def update_modules(self, state, reward, eq):
         """
@@ -318,7 +297,7 @@ class MCTS():
                     if reward > self.good_modules[0][1]:
                         self.good_modules = sorted(self.good_modules[1:] + [(module, reward, eq)], key=lambda x: x[1])
 
-    def run(self, num_episodes, num_play=50, print_flag=False, print_freq=100):
+    def run(self, num_episodes, network, num_play=50, print_flag=False, print_freq=100):
         """
         Monte Carlo Tree Search algorithm
         此方法实现了蒙特卡洛树搜索算法。
@@ -336,6 +315,13 @@ class MCTS():
 
         # 初始化一个用于存储奖励历史的空列表
         reward_his = []
+        state_records = []
+        seq_records = []
+        expand_policy_records = []
+        value_records = []
+        selection_policy_records = []
+        selection_state_records = []
+        selection_seq_records = []
 
         # 初始化最佳解决方案及其奖励为0
         best_solution = ('nothing', 0)
@@ -350,6 +336,7 @@ class MCTS():
             state = 'f->A'
             ntn = ['A']
             UC = self.get_unvisited(state, ntn[0])  # unvisited child，获取未访问的节点索引列表
+            # print(UC)
 
             ##### check scenario: if parent node fully expanded or not ####
 
@@ -357,8 +344,11 @@ class MCTS():
             # 如果当前节点已经被完全扩展（即没有未访问的子节点）
             while not UC:
                 # 按照策略1选择一个动作
-                policy = self.get_policy1(nA, state, ntn[0])
+                policy = self.get_policy1(nA, state, ntn[0], network)
                 action = np.random.choice(np.arange(nA), p=policy)
+                selection_policy_records.append(policy)
+                selection_state_records.append(state)
+                selection_seq_records.append(self.data_sample)
 
                 # 执行选定的动作，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
@@ -400,12 +390,18 @@ class MCTS():
             # scenario 2: if current parent node not fully expanded, follow policy2
             # 如果当前节点还没有被完全扩展（存在未访问的子节点）
             if UC:
-                # 按照策略2选择一个动作
-                policy = self.get_policy2(nA, UC)
+                # 按照策略2拓展一个动作
+                policy, policy_UC = self.get_policy3(state, network, ntn[0], UC)
                 # print(len(policy))
-                action = np.random.choice(np.arange(nA), p=policy)
+                action = np.random.choice(UC, p=policy_UC)
                 # 执行选定的动作的索引，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
+
+                if eq is not None:
+                    state_records.append(state)
+                    seq_records.append(self.data_sample)
+                    expand_policy_records.append(policy)
+                    value_records.append(reward)
 
                 # 如果新的状态不是终止状态，那么进行num_play次滚动模拟，获取最大的奖励和对应的方程
                 if not done:
@@ -422,5 +418,16 @@ class MCTS():
                 self.backpropogate(state, action, reward)
                 reward_his.append(best_solution[1])
 
-        # 返回奖励历史、最佳解和优秀模块
-        return reward_his, best_solution, self.good_modules
+        # 返回奖励历史、最佳解，优秀模块，用于训练拓展的样本，用于训练选择的样本
+        return reward_his, best_solution, self.good_modules, zip(state_records, seq_records, expand_policy_records,
+                                                                 value_records), zip(selection_state_records,
+                                                                                     selection_seq_records,
+                                                                                     selection_policy_records)
+
+    @staticmethod
+    def softmax(x):
+        """
+        Compute softmax values for each sets of scores in x.
+        """
+        e_x = np.exp(x - np.max(x))
+        return e_x / e_x.sum(axis=0)

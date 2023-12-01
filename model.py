@@ -1,4 +1,5 @@
 import time
+from collections import defaultdict, deque
 
 import numpy as np
 import torch.nn as nn
@@ -6,6 +7,7 @@ import torch.nn as nn
 import score
 import symbolics
 from mcts import MCTS
+from network import PVNetCtx
 
 
 class Model(nn.Module):
@@ -13,29 +15,29 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         # Extract the properties from args
-        properties = [
-            'symbolic_lib',
-            'max_len',
-            'max_module_init',
-            'num_transplant',
-            'num_runs',
-            'eta',
-            'num_aug',
-            'exploration_rate',
-            'transplant_step',
-            'norm_threshold'
-        ]
-
-        for prop in properties:
-            if hasattr(args, prop):
-                setattr(self, prop, getattr(args, prop))
-            else:
-                raise ValueError(f'args does not have property {prop}')
+        self.symbolic_lib = args.symbolic_lib
+        self.max_len = args.max_len
+        self.max_module_init = args.max_module_init
+        self.num_transplant = args.num_transplant
+        self.num_runs = args.num_runs
+        self.eta = args.eta
+        self.num_aug = args.num_aug
+        self.exploration_rate = args.exploration_rate
+        self.transplant_step = args.transplant_step
+        self.norm_threshold = args.norm_threshold
+        self.device = args.device
 
         # Other initializations
-        self.grammars = symbolics.rule_map[self.symbolic_lib]
+        self.base_grammar = symbolics.rule_map[self.symbolic_lib]
         self.nt_nodes = symbolics.ntn_map[self.symbolic_lib]
         self.score_with_est = score.score_with_est
+        self.data_buffer_selection = deque(maxlen=1024)
+        self.data_buffer_selection_augment = deque(maxlen=1024)
+        self.data_buffer_expand = deque(maxlen=1024)
+        self.data_buffer_expand_augment = deque(maxlen=1024)
+        self.pv_net_ctx = PVNetCtx(grammars=self.base_grammar, device=self.device)
+
+        self.aug_grammars_counter = defaultdict(lambda: 0)
 
     def run(self, X, y=None):
 
@@ -56,6 +58,7 @@ class Model(nn.Module):
 
         all_times = []
         all_eqs = []
+        test_scores = []
 
         module_grow_step = (self.max_len - self.max_module_init) / self.num_transplant
 
@@ -72,22 +75,27 @@ class Model(nn.Module):
             discovery_time = 0  # 初始化发现时间
 
             for i_itr in range(self.num_transplant):
-                mcts_block = MCTS(data_sample=input_data,
-                                  base_grammars=self.grammars,
-                                  aug_grammars=aug_grammars,
-                                  nt_nodes=self.nt_nodes,
-                                  max_len=self.max_len,
-                                  max_module=max_module,
-                                  aug_grammars_allowed=self.num_aug,
-                                  func_score=self.score_with_est,
-                                  exploration_rate=self.exploration_rate,
-                                  eta=self.eta)
+                mcts = MCTS(data_sample=input_data,
+                            base_grammars=self.base_grammar,
+                            aug_grammars=aug_grammars,
+                            nt_nodes=self.nt_nodes,
+                            max_len=self.max_len,
+                            max_module=max_module,
+                            aug_grammars_allowed=self.num_aug,
+                            func_score=self.score_with_est,
+                            exploration_rate=self.exploration_rate,
+                            eta=self.eta)
 
-                _, current_solution, good_modules = mcts_block.run(self.transplant_step,
-                                                                   num_play=10,
-                                                                   print_flag=True)
-
-                end_time = time.time() - start_time  # 计算运行时间
+                _, current_solution, good_modules, expand_data, selection_data = mcts.run(self.transplant_step,
+                                                                                          network=self.pv_net_ctx,
+                                                                                          num_play=10,
+                                                                                          print_flag=True)
+                if i_itr == 0:
+                    self.data_buffer_selection.extend(list(selection_data)[:])
+                    self.data_buffer_expand.extend(list(expand_data)[:])
+                else:
+                    self.data_buffer_selection_augment.extend(list(selection_data)[:])
+                    self.data_buffer_expand_augment.extend(list(expand_data)[:])
 
                 # 如果没有最佳模块，则将好的模块赋值给最佳模块
                 if not best_modules:
@@ -98,6 +106,8 @@ class Model(nn.Module):
 
                 # 更新增强语法
                 aug_grammars = [x[0] for x in best_modules[-self.num_aug:]]
+                for grammar in aug_grammars:
+                    self.aug_grammars_counter[grammar] += 1
 
                 # 将最佳解决方案的评分添加到奖励历史中
                 reward_his.append(best_solution[1])
@@ -114,18 +124,14 @@ class Model(nn.Module):
                 # 检查是否发现了解决方案。如果是，提前停止。
                 test_score = \
                     self.score_with_est(score.simplify_eq(best_solution[0]), 0, supervision_data, eta=self.eta)[0]
-                if test_score >= 1 - self.norm_threshold:
-                    num_success += 1
-                    if discovery_time == 0:
-                        discovery_time = end_time
-                        all_times.append(discovery_time)
-                    break
 
             all_eqs.append(score.simplify_eq(best_solution[0]))
+            test_scores.append(test_score)
+
             print('\n{} tests complete after {} iterations.'.format(i_test + 1, i_itr + 1))
             print('best solution: {}'.format(score.simplify_eq(best_solution[0])))
             print('test score: {}'.format(test_score))
             print()
 
         # 返回所有发现的方程、成功率和运行时间
-        return all_eqs, all_times, supervision_data
+        return all_eqs, test_scores, supervision_data
