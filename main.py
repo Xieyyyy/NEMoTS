@@ -7,7 +7,7 @@ import torch
 from data_provider.data_factory import data_provider
 from engine import Engine
 
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description='PyTorch Time series forecasting')
 
@@ -113,9 +113,10 @@ def main():
                 write_log(log.format(iter, train_loss / train_n_samples, mae, mse, r_squared, corr),
                           "./records/" + args.tag)
 
-    
-
         torch.cuda.empty_cache()
+
+        for iter, (data, _, _) in enumerate(test_loader):
+            test_data = data[..., args.used_dimension].float()
 
 
 if __name__ == '__main__':

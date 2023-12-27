@@ -21,13 +21,17 @@ class Engine(object):
     def train(self, data):
         X, y = data[:, :self.args.seq_in], data[:, -self.args.seq_out:]
         all_eqs, test_scores, test_data = self.model.run(X, y)
-        mae, mse, corr, r_squared, best_exp = OptimizedMetrics.metrics(all_eqs, test_scores, test_data)
+        mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data)
         if all(len(data_buffer) > self.args.train_size for data_buffer in
                [self.model.data_buffer_selection, self.model.data_buffer_selection_augment,
                 self.model.data_buffer_expand, self.model.data_buffer_expand_augment]):
             loss = self.optimize()
             return best_exp, test_data, loss, mae, mse, r_squared, corr
         return best_exp, test_data, 0, mae, mse, r_squared, corr
+
+    def eval(self, data):
+        X, y = data[:, :self.args.seq_in], data[:, -self.args.seq_out:]
+        all_eqs, test_scores, test_data = self.model.run(X, y)
 
     @staticmethod
     def kl_divengence(P, Q):
@@ -189,7 +193,7 @@ class Engine(object):
         return state_batch, seq_batch, policy_batch
 
 
-class OptimizedMetrics:
+class Metrics:
     @staticmethod
     def metrics(exps, scores, data):
         best_index = np.argmax(scores)
