@@ -1,8 +1,7 @@
-import time
-from collections import defaultdict, deque
+import json
+from collections import deque
 
 import numpy as np
-import torch.nn as nn
 
 import score
 import symbolics
@@ -10,9 +9,8 @@ from mcts import MCTS
 from network import PVNetCtx
 
 
-class Model(nn.Module):
-    def __init__(self, args):
-        super(Model, self).__init__()
+class Model():
+    def __init__(self, args, train=True):
 
         # Extract the properties from args
         self.symbolic_lib = args.symbolic_lib
@@ -37,11 +35,17 @@ class Model(nn.Module):
         self.data_buffer_expand_augment = deque(maxlen=1024)
         self.pv_net_ctx = PVNetCtx(grammars=self.base_grammar, device=self.device)
 
-        self.aug_grammars_counter = defaultdict(lambda: 0)
+        # self.aug_grammars_counter = defaultdict(lambda: 0)
+        with open("./aug_grammars.json", "r") as f:
+            self.aug_grammars_counter = json.load(f)
+
+        self.train_mode = train
 
     def run(self, X, y=None):
 
         assert X.size(0) == 1
+        if self.train_mode:
+            assert y is not None
         if y is not None:
             X = X.squeeze(0)
             y = y.squeeze(0)
@@ -56,7 +60,54 @@ class Model(nn.Module):
             input_data = np.vstack([time_idx[:X.size(0)], X])
             supervision_data = np.vstack([time_idx, X])
 
-        all_times = []
+        all_eqs, test_scores, supervision_data = self.train(input_data,
+                                                            supervision_data) if self.train_mode else self.eval(
+            input_data)
+        return all_eqs, test_scores, supervision_data
+
+    def eval(self, input_data):
+        all_eqs = []
+        test_scores = []
+
+        for i_test in range(self.num_runs):
+            best_solution = ('nothing', 0)
+
+            max_module = self.max_module_init  # 设置最大模块
+            reward_his = []  # 初始化奖励历史
+            aug_grammars = []  # 初始化增强语法
+
+            mcts = MCTS(data_sample=input_data,
+                        base_grammars=self.base_grammar,
+                        aug_grammars=aug_grammars,
+                        nt_nodes=self.nt_nodes,
+                        max_len=self.max_len,
+                        max_module=max_module,
+                        aug_grammars_allowed=self.num_aug,
+                        func_score=self.score_with_est,
+                        exploration_rate=self.exploration_rate,
+                        eta=self.eta,
+                        train=False,
+                        aug_grammar_table=self.aug_grammars_counter)
+            _, current_solution, _, _, _ = mcts.run(self.transplant_step,
+                                                    network=self.pv_net_ctx,
+                                                    num_play=10,
+                                                    print_flag=True)
+            reward_his.append(best_solution[1])
+            if current_solution[1] > best_solution[1]:
+                best_solution = current_solution
+
+            test_score = \
+                self.score_with_est(score.simplify_eq(best_solution[0]), 0, input_data, eta=self.eta)[0]
+            all_eqs.append(score.simplify_eq(best_solution[0]))
+            test_scores.append(test_score)
+
+            print('best solution: {}'.format(score.simplify_eq(best_solution[0])))
+            print('test score: {}'.format(test_score))
+            print()
+
+        return all_eqs, test_scores, input_data
+
+    def train(self, input_data, supervision_data):
         all_eqs = []
         test_scores = []
 
@@ -70,9 +121,6 @@ class Model(nn.Module):
             reward_his = []  # 初始化奖励历史
             best_modules = []  # 初始化最佳模块
             aug_grammars = []  # 初始化增强语法
-
-            start_time = time.time()  # 记录开始时间
-            discovery_time = 0  # 初始化发现时间
 
             for i_itr in range(self.num_transplant):
                 mcts = MCTS(data_sample=input_data,
@@ -133,5 +181,4 @@ class Model(nn.Module):
             print('test score: {}'.format(test_score))
             print()
 
-        # 返回所有发现的方程、成功率和运行时间
         return all_eqs, test_scores, supervision_data

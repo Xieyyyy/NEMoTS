@@ -11,6 +11,11 @@ from torch.distributions import Categorical
 from model import Model
 
 
+def write_log(info, file_dir):
+    with open(file_dir + ".txt", 'a') as file:
+        file.write(info + '\n')
+
+
 class Engine(object):
     def __init__(self, args):
         self.args = args
@@ -19,6 +24,7 @@ class Engine(object):
                                  weight_decay=self.args.weight_decay)
 
     def train(self, data):
+        self.model.train_mode = True
         X, y = data[:, :self.args.seq_in], data[:, -self.args.seq_out:]
         all_eqs, test_scores, test_data = self.model.run(X, y)
         mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data)
@@ -30,8 +36,11 @@ class Engine(object):
         return best_exp, test_data, 0, mae, mse, r_squared, corr
 
     def eval(self, data):
+        self.model.train_mode = False
         X, y = data[:, :self.args.seq_in], data[:, -self.args.seq_out:]
-        all_eqs, test_scores, test_data = self.model.run(X, y)
+        all_eqs, test_scores, test_data = self.model.run(X)
+        mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data)
+        return best_exp, test_data, mae, mse, r_squared, corr
 
     @staticmethod
     def kl_divengence(P, Q):
@@ -204,7 +213,11 @@ class Metrics:
         corrected_expression = best_exp.replace("exp", "np.exp").replace("cos", "np.cos").replace("sin",
                                                                                                   "np.sin").replace(
             "sqrt", "np.sqrt").replace("log", "np.log")
-        f = lambda x: eval(corrected_expression)
+        try:
+            f = lambda x: eval(corrected_expression)
+        except ValueError or NameError:
+            write_log(corrected_expression, "./records/exception_records")
+            return np.nan, np.nan, np.nan, np.nan, None
 
         prediction = f(span)
         mae = np.mean(np.abs(prediction - gt))
