@@ -4,18 +4,12 @@ from collections import defaultdict
 import numpy as np
 
 
-# from main import write_log
-def write_log(info, file_dir):
-    with open(file_dir + ".txt", 'a') as file:
-        file.write(info + '\n')
-
-
 class MCTS():
     def __init__(self, data_sample, base_grammars, aug_grammars, nt_nodes, max_len, max_module, aug_grammars_allowed,
-                 func_score, exploration_rate=1 / np.sqrt(2), eta=0.999, train=True, aug_grammar_table=None):
+                 func_score, exploration_rate=1 / np.sqrt(2), eta=0.999):
         self.data_sample = data_sample
         self.base_grammars = base_grammars
-        aug_grammars = aug_grammars if train else ["A->placeholder"]
+
         self.grammars = base_grammars + [x for x in aug_grammars if
                                          x not in base_grammars]
 
@@ -33,9 +27,6 @@ class MCTS():
             lambda: np.zeros(2))  # 初始化一个默认字典，每个键的默认值是一个长度为2的零数组。数组的第一个元素可能表示状态的质量（Q），数组的第二个元素可能表示状态的访问次数（N）。
         self.scale = 0
         self.eta = eta
-        self.train = train
-        if not self.train:
-            self.aug_grammar_table = aug_grammar_table
 
     def valid_prods(self, Node):
         """
@@ -50,7 +41,6 @@ class MCTS():
         """
         将解析树转换为等式形式。
         """
-        # print(prods)
         seq = ['f']
         for prod in prods:
             if str(prod[0]) == 'Nothing':
@@ -130,15 +120,6 @@ class MCTS():
         '''
         print('Episode', i_episode, solu)
 
-    def secondary_sample(self, remain_count):
-        assert not self.train
-        sorted_list = sorted(self.aug_grammar_table.items(), key=lambda x: x[1], reverse=True)[:remain_count]
-        # total = sum(value for _, value in sorted_list)
-        # probabilities = self.softmax([value / total for _, value in sorted_list])
-        probabilities = self.softmax([value for _, value in sorted_list])
-        action = np.random.choice(np.arange(len(probabilities)), p=probabilities)
-        return sorted_list[action][0]
-
     def step(self, state, action_idx, ntn):
         """
         这个方法定义了解析树遍历的一步。它会返回下一个状态，剩余的非终端节点，奖励，是否完成遍历，以及解析出的等式。
@@ -146,10 +127,9 @@ class MCTS():
 
         # 从grammars属性中获取索引为action_idx的语法动作(随机选择到的动作)。
         action = self.grammars[action_idx]
-        action = self.secondary_sample(remain_count=10) if action == "A->placeholder" else action
+
         # 将选择的动作添加到当前的状态字符串。
         state = state + ',' + action
-        # print(state)
 
         # 获取由新的动作产生的非终端节点，并更新ntn列表。注意，这里ntn[1:]是将原有ntn列表中的第一个元素（也就是被替换的非终端节点）去掉。
         ntn = self.get_ntn(action, action_idx) + ntn[1:]
@@ -195,11 +175,6 @@ class MCTS():
                     best_r = reward
 
         return best_r, best_eq
-
-    def nn_est_reward(self, state, network):
-        reward = self.aquire_nn(state, network)[2].item()
-        eq = self.tree_to_eq(state.split(','))
-        return reward, eq
 
     def update_ucb_mcts(self, state, action):
         """
@@ -263,25 +238,57 @@ class MCTS():
             else:
                 state = ''
 
-    def get_policy1(self, nA, state, node, network):
+    def get_policy1(self, nA, state, node):
+        """
+        Creates a policy based on ucb score.
+        这两个方法分别创建基于UCB分数的策略和用于选择未访问过的子节点的随机策略。
+        这个函数的目的是创建一个基于ucb(上限置信度边界)分数的策略。
+        """
+
         valid_action = self.valid_prods(node)
-        policy_valid, _, _ = self.aquire_nn(state, network)
-        policy_valid = self.softmax(policy_valid.squeeze(0).cpu().detach().numpy()[:len(valid_action)])
+        # 根据给定的节点，找出所有的有效动作。
+
+        policy_valid = []
+        # 初始化一个空列表，用于存储所有有效动作的ucb分数。
+
         sum_ucb = sum(self.UCBs[state][valid_action])
-        for idx, a in enumerate(valid_action):
+        # 计算所有有效动作的ucb分数的总和。
+
+        for a in valid_action:
+            # 对于每一个有效动作：
+
             policy_mcts = self.UCBs[state][a] / sum_ucb
-            policy_valid[idx] = policy_valid[idx] * policy_mcts
+            # 计算这个动作的ucb分数在总分中的比例，并赋值给policy_mcts。
+
+            policy_valid.append(policy_mcts)
+            # 将policy_mcts添加到policy_valid列表中。
 
         if len(set(policy_valid)) == 1:
+            # 如果所有的ucb分数都相同：
+
             A = np.zeros(nA)
+            # 创建一个长度为nA的零向量A。
+
             A[valid_action] = float(1 / len(valid_action))
+            # 将所有有效动作对应的元素设为均匀概率。
+
             return A
+            # 返回概率向量A。
 
         A = np.zeros(nA, dtype=float)
+        # 创建一个长度为nA的零向量A。
+
         best_action = valid_action[np.argmax(policy_valid)]
+        # 找出具有最大ucb分数的动作，并赋值给best_action。
+
         A[best_action] += 0.8
+        # 将最佳动作对应的元素设为0.8。
+
         A[valid_action] += float(0.2 / len(valid_action))
+        # 将所有有效动作对应的元素平均分配剩余的0.2。
+
         return A
+        # 返回概率向量A。
 
     def get_policy2(self, nA, UC):
         """
@@ -293,17 +300,6 @@ class MCTS():
         A = np.zeros(nA, dtype=float)
         A[UC] += float(1 / len(UC))
         return A
-
-    def get_policy3(self, state, network, node, UC):
-        valid_action = self.valid_prods(node)
-        _, policy_expand, _ = self.aquire_nn(state, network)
-        policy_expand = policy_expand.squeeze(0).cpu().detach().numpy()[:len(valid_action)]
-        return self.softmax(policy_expand), self.softmax(policy_expand[UC])
-
-    def aquire_nn(self, state, network):
-        seq = self.data_sample
-        selection_dist_out, expand_dist_out, value_out = network.policy_value(seq, state)
-        return selection_dist_out, expand_dist_out, value_out
 
     def update_modules(self, state, reward, eq):
         """
@@ -322,13 +318,12 @@ class MCTS():
                     if reward > self.good_modules[0][1]:
                         self.good_modules = sorted(self.good_modules[1:] + [(module, reward, eq)], key=lambda x: x[1])
 
-    def run(self, num_episodes, network, num_play=50, print_flag=False, print_freq=100):
+    def run(self, num_episodes, num_play=50, print_flag=False, print_freq=100):
         """
         Monte Carlo Tree Search algorithm
         此方法实现了蒙特卡洛树搜索算法。
         """
         # 获取所有语法（动作）的数量
-
         nA = len(self.grammars)
 
         # search history
@@ -341,14 +336,6 @@ class MCTS():
 
         # 初始化一个用于存储奖励历史的空列表
         reward_his = []
-        if self.train:
-            state_records = []
-            seq_records = []
-            expand_policy_records = []
-            value_records = []
-            selection_policy_records = []
-            selection_state_records = []
-            selection_seq_records = []
 
         # 初始化最佳解决方案及其奖励为0
         best_solution = ('nothing', 0)
@@ -363,7 +350,6 @@ class MCTS():
             state = 'f->A'
             ntn = ['A']
             UC = self.get_unvisited(state, ntn[0])  # unvisited child，获取未访问的节点索引列表
-            # print(UC)
 
             ##### check scenario: if parent node fully expanded or not ####
 
@@ -371,12 +357,8 @@ class MCTS():
             # 如果当前节点已经被完全扩展（即没有未访问的子节点）
             while not UC:
                 # 按照策略1选择一个动作
-                policy = self.get_policy1(nA, state, ntn[0], network)
+                policy = self.get_policy1(nA, state, ntn[0])
                 action = np.random.choice(np.arange(nA), p=policy)
-                if self.train:
-                    selection_policy_records.append(policy)
-                    selection_state_records.append(state)
-                    selection_seq_records.append(self.data_sample)
 
                 # 执行选定的动作，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
@@ -416,60 +398,29 @@ class MCTS():
                     break
 
             # scenario 2: if current parent node not fully expanded, follow policy2
-            # 如果当前节点还没有被完全扩展（存在未访问的子节点），则执行expansion操作
+            # 如果当前节点还没有被完全扩展（存在未访问的子节点）
             if UC:
-                # 按照策略2拓展一个动作
-                # print(state)
-                policy, policy_UC = self.get_policy3(state, network, ntn[0], UC)
+                # 按照策略2选择一个动作
+                policy = self.get_policy2(nA, UC)
                 # print(len(policy))
-                action = np.random.choice(UC, p=policy_UC)
-                # print(str((policy, policy_UC)))
-                write_log(str((self.train, list(policy_UC))), "./records/illness_prob")
-                # print(action)
-                # action = 11
+                action = np.random.choice(np.arange(nA), p=policy)
                 # 执行选定的动作的索引，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
 
-                if eq is not None and self.train:
-                    state_records.append(state)
-                    seq_records.append(self.data_sample)
-                    expand_policy_records.append(policy)
-                    value_records.append(reward)
-
                 # 如果新的状态不是终止状态，那么进行num_play次滚动模拟，获取最大的奖励和对应的方程
                 if not done:
-                    # reward, eq = self.rollout(num_play, next_state, ntn_next)
-                    reward, eq = self.rollout(num_play, next_state, ntn_next) if self.train else self.nn_est_reward(
-                        next_state, network)
+                    reward, eq = self.rollout(num_play, next_state, ntn_next)
                     if state not in states:
                         states.append(state)
 
                 # 如果新的奖励大于之前最佳解的奖励，那么就更新Q/N值和最佳解
                 if reward > best_solution[1]:
                     self.update_QN_scale(reward)
-                    print((next_state, eq, reward))
-                    write_log(str((next_state, eq, reward)), "./records/illness")
-
                     best_solution = (eq, reward)
 
                 # 进行反向传播，并将最佳解的奖励加入到奖励历史中
                 self.backpropogate(state, action, reward)
                 reward_his.append(best_solution[1])
 
-        write_log("----------------------------------------", "./records/illness")
-        # 返回奖励历史、最佳解，优秀模块，用于训练拓展的样本，用于训练选择的样本
-        if self.train:
-            return reward_his, best_solution, self.good_modules, zip(state_records, seq_records, expand_policy_records,
-                                                                     value_records), zip(selection_state_records,
-                                                                                         selection_seq_records,
-                                                                                         selection_policy_records)
-        else:
-            return reward_his, best_solution, None, None, None
-
-    @staticmethod
-    def softmax(x):
-        """
-        Compute softmax values for each sets of scores in x.
-        """
-        e_x = np.exp(x - np.max(x))
-        return e_x / e_x.sum(axis=0)
+        # 返回奖励历史、最佳解和优秀模块
+        return reward_his, best_solution, self.good_modules

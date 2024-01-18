@@ -56,7 +56,7 @@ parser.add_argument("--lr_decay", type=float, default=1)
 parser.add_argument("--train_size", type=float, default=64)
 
 # -- analysis
-parser.add_argument("--recording", action="store_true", default=True)
+parser.add_argument("--recording", action="store_true", default=False)
 parser.add_argument("--tag", type=str, default="illness", help='')
 
 args = parser.parse_args()

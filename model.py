@@ -84,11 +84,9 @@ class Model():
                         aug_grammars_allowed=self.num_aug,
                         func_score=self.score_with_est,
                         exploration_rate=self.exploration_rate,
-                        eta=self.eta,
-                        train=False,
-                        aug_grammar_table=self.aug_grammars_counter)
+                        eta=self.eta)
+
             _, current_solution, _, _, _ = mcts.run(self.transplant_step,
-                                                    network=self.pv_net_ctx,
                                                     num_play=10,
                                                     print_flag=True)
             reward_his.append(best_solution[1])
@@ -133,16 +131,9 @@ class Model():
                             exploration_rate=self.exploration_rate,
                             eta=self.eta)
 
-                _, current_solution, good_modules, expand_data, selection_data = mcts.run(self.transplant_step,
-                                                                                          network=self.pv_net_ctx,
-                                                                                          num_play=10,
-                                                                                          print_flag=True)
-                if i_itr == 0:
-                    self.data_buffer_selection.extend(list(selection_data)[:])
-                    self.data_buffer_expand.extend(list(expand_data)[:])
-                else:
-                    self.data_buffer_selection_augment.extend(list(selection_data)[:])
-                    self.data_buffer_expand_augment.extend(list(expand_data)[:])
+                reward_his, best_solution, good_modules = mcts.run(self.transplant_step,
+                                                                   num_play=10,
+                                                                   print_flag=True)
 
                 # 如果没有最佳模块，则将好的模块赋值给最佳模块
                 if not best_modules:
