@@ -27,6 +27,12 @@ class MCTS():
             lambda: np.zeros(2))  # 初始化一个默认字典，每个键的默认值是一个长度为2的零数组。数组的第一个元素可能表示状态的质量（Q），数组的第二个元素可能表示状态的访问次数（N）。
         self.scale = 0
         self.eta = eta
+<<<<<<< Updated upstream
+=======
+        # self.train = train
+        # if not self.train:
+        #     self.aug_grammar_table = aug_grammar_table
+>>>>>>> Stashed changes
 
     def valid_prods(self, Node):
         """
@@ -336,6 +342,17 @@ class MCTS():
 
         # 初始化一个用于存储奖励历史的空列表
         reward_his = []
+<<<<<<< Updated upstream
+=======
+        # if self.train:
+        #     state_records = []
+        #     seq_records = []
+        #     expand_policy_records = []
+        #     value_records = []
+        #     selection_policy_records = []
+        #     selection_state_records = []
+        #     selection_seq_records = []
+>>>>>>> Stashed changes
 
         # 初始化最佳解决方案及其奖励为0
         best_solution = ('nothing', 0)
@@ -359,6 +376,13 @@ class MCTS():
                 # 按照策略1选择一个动作
                 policy = self.get_policy1(nA, state, ntn[0])
                 action = np.random.choice(np.arange(nA), p=policy)
+<<<<<<< Updated upstream
+=======
+                # if self.train:
+                #     selection_policy_records.append(policy)
+                #     selection_state_records.append(state)
+                #     selection_seq_records.append(self.data_sample)
+>>>>>>> Stashed changes
 
                 # 执行选定的动作，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
@@ -400,6 +424,7 @@ class MCTS():
             # scenario 2: if current parent node not fully expanded, follow policy2
             # 如果当前节点还没有被完全扩展（存在未访问的子节点）
             if UC:
+<<<<<<< Updated upstream
                 # 按照策略2选择一个动作
                 policy = self.get_policy2(nA, UC)
                 # print(len(policy))
@@ -409,6 +434,31 @@ class MCTS():
 
                 # 如果新的状态不是终止状态，那么进行num_play次滚动模拟，获取最大的奖励和对应的方程
                 if not done:
+=======
+                # 按照策略2拓展一个动作
+                # print(state)
+                # policy, policy_UC = self.get_policy3(state, network, ntn[0], UC)
+                policy_UC = self.get_policy2(nA, UC)
+                print(policy_UC, UC)
+                # print(len(policy))
+                action = np.random.choice(UC, p=policy_UC)
+                # print(str((policy, policy_UC)))
+                # write_log(str((self.train, list(policy_UC))), "./records/illness_prob")
+                # print(action)
+                # action = 11
+                # 执行选定的动作的索引，获得新的状态、非终止节点、奖励、是否完成以及方程
+                next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
+
+                # if eq is not None and self.train:
+                #     state_records.append(state)
+                #     seq_records.append(self.data_sample)
+                #     expand_policy_records.append(policy)
+                #     value_records.append(reward)
+
+                # 如果新的状态不是终止状态，那么进行num_play次滚动模拟，获取最大的奖励和对应的方程
+                if not done:
+                    # reward, eq = self.rollout(num_play, next_state, ntn_next)
+>>>>>>> Stashed changes
                     reward, eq = self.rollout(num_play, next_state, ntn_next)
                     if state not in states:
                         states.append(state)
@@ -416,11 +466,32 @@ class MCTS():
                 # 如果新的奖励大于之前最佳解的奖励，那么就更新Q/N值和最佳解
                 if reward > best_solution[1]:
                     self.update_QN_scale(reward)
+<<<<<<< Updated upstream
+=======
+                    # print((next_state, eq, reward))
+                    # write_log(str((next_state, eq, reward)), "./records/illness")
+
+>>>>>>> Stashed changes
                     best_solution = (eq, reward)
 
                 # 进行反向传播，并将最佳解的奖励加入到奖励历史中
                 self.backpropogate(state, action, reward)
                 reward_his.append(best_solution[1])
 
+<<<<<<< Updated upstream
         # 返回奖励历史、最佳解和优秀模块
         return reward_his, best_solution, self.good_modules
+=======
+        # write_log("----------------------------------------", "./records/illness")
+        # 返回奖励历史、最佳解，优秀模块，用于训练拓展的样本，用于训练选择的样本
+
+        return reward_his, best_solution, self.good_modules
+
+    @staticmethod
+    def softmax(x):
+        """
+        Compute softmax values for each sets of scores in x.
+        """
+        e_x = np.exp(x - np.max(x))
+        return e_x / e_x.sum(axis=0)
+>>>>>>> Stashed changes

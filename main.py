@@ -121,7 +121,7 @@ def main():
                 write_log(str(best_exp), "./records/" + args.tag)
                 write_log(str(test_data[1]), "./records/" + args.tag)
                 write_log(log, "./records/" + args.tag)  # 将含有时间消耗的日志写入文件
-                write_log("----------------------------------------", "./records/" + args.tag)
+                # write_log("----------------------------------------", "./records/" + args.tag)
                 # torch.save(engine.model.pv_net_ctx.network.state_dict(), 'model_checkpoint.pth')
                 # if train_loss != 0:
                 #     sw.add_scalar('Training/Loss', train_loss / train_n_samples, iter)

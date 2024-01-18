@@ -54,11 +54,11 @@ class Engine(object):
         X, y = data[:, :self.args.seq_in], data[:, -self.args.seq_out:]
         all_eqs, test_scores, test_data = self.model.run(X, y)
         mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data)
-        if all(len(data_buffer) > self.args.train_size for data_buffer in
-               [self.model.data_buffer_selection, self.model.data_buffer_selection_augment,
-                self.model.data_buffer_expand, self.model.data_buffer_expand_augment]):
-            loss = self.optimize()
-            return best_exp, test_data, loss, mae, mse, r_squared, corr
+        # if all(len(data_buffer) > self.args.train_size for data_buffer in
+        #        [self.model.data_buffer_selection, self.model.data_buffer_selection_augment,
+        #         self.model.data_buffer_expand, self.model.data_buffer_expand_augment]):
+        #     loss = self.optimize()
+        #     return best_exp, test_data, loss, mae, mse, r_squared, corr
         return best_exp, test_data, 0, mae, mse, r_squared, corr
 
     def eval(self, data):
@@ -159,8 +159,8 @@ class Engine(object):
 
             # total_loss = self.awl(kl_d_selection, kl_d_selection_augment, mse_value, mse_value_augment, kl_d_expand,
             #                       kl_d_expand_augment)
-            print(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())))
-            write_log(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())), "./records/illness")
+            # print(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())))
+            # write_log(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())), "./records/illness")
             total_loss = kl_d_selection + kl_d_selection_augment + 5 * (mse_value + mse_value_augment) + 10000 * (
                     kl_d_expand + kl_d_expand_augment)
             cumulative_loss += total_loss.item()
