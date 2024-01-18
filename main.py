@@ -3,10 +3,11 @@ import time
 
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
 
 from data_provider.data_factory import data_provider
 from engine import Engine
+
+# from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description='PyTorch Time series forecasting')
 
@@ -47,7 +48,7 @@ parser.add_argument("--seq_in", type=int, default=30, help='length of input seq'
 parser.add_argument("--seq_out", type=int, default=6, help='length of output seq')
 parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
 parser.add_argument("--batch_size", type=int, default=1, help='default')
-parser.add_argument("--lr", type=float, default=1e-6, help='learning rate')
+parser.add_argument("--lr", type=float, default=1e-4, help='learning rate')
 parser.add_argument("--dropout", type=float, default=0.05, help='dropout rate')
 parser.add_argument('--weight_decay', type=float, default=0.0001, help='weight decay rate')
 parser.add_argument("--clip", type=float, default=5., help='gradient clip')
@@ -55,7 +56,7 @@ parser.add_argument("--lr_decay", type=float, default=1)
 parser.add_argument("--train_size", type=float, default=64)
 
 # -- analysis
-parser.add_argument("--recording", action="store_true")
+parser.add_argument("--recording", action="store_true", default=True)
 parser.add_argument("--tag", type=str, default="illness", help='')
 
 args = parser.parse_args()
@@ -82,7 +83,7 @@ def main():
     test_data, test_loader = get_data(args=args, flag='test')
 
     if args.recording:
-        sw = SummaryWriter(comment=args.tag)
+        # sw = SummaryWriter(comment=args.tag)
         write_log(str(args), "./records/" + args.tag)
         # write_log(str(args), "./records/" + args.logtag)
 
@@ -120,8 +121,10 @@ def main():
                 write_log(str(best_exp), "./records/" + args.tag)
                 write_log(str(test_data[1]), "./records/" + args.tag)
                 write_log(log, "./records/" + args.tag)  # 将含有时间消耗的日志写入文件
-                if train_loss != 0:
-                    sw.add_scalar('Training/Loss', train_loss / train_n_samples, iter)
+                write_log("----------------------------------------", "./records/" + args.tag)
+                # torch.save(engine.model.pv_net_ctx.network.state_dict(), 'model_checkpoint.pth')
+                # if train_loss != 0:
+                #     sw.add_scalar('Training/Loss', train_loss / train_n_samples, iter)
 
         torch.cuda.empty_cache()
 
@@ -149,6 +152,7 @@ def main():
                 write_log(str(best_exp), "./records/" + args.tag)
                 write_log(str(test_data[1]), "./records/" + args.tag)
                 write_log(log, "./records/" + args.tag)
+                write_log("\n", "./records/" + args.tag)
 
 
 if __name__ == '__main__':

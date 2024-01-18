@@ -1,5 +1,4 @@
-import json
-from collections import deque
+from collections import defaultdict, deque
 
 import numpy as np
 
@@ -35,9 +34,9 @@ class Model():
         self.data_buffer_expand_augment = deque(maxlen=1024)
         self.pv_net_ctx = PVNetCtx(grammars=self.base_grammar, device=self.device)
 
-        # self.aug_grammars_counter = defaultdict(lambda: 0)
-        with open("./aug_grammars.json", "r") as f:
-            self.aug_grammars_counter = json.load(f)
+        self.aug_grammars_counter = defaultdict(lambda: 0)
+        # with open("./aug_grammars.json", "r") as f:
+        #     self.aug_grammars_counter = json.load(f)
 
         self.train_mode = train
 

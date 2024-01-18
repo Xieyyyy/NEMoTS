@@ -3,6 +3,7 @@ import random
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as op
 from scipy.stats import pearsonr
@@ -16,12 +17,37 @@ def write_log(info, file_dir):
         file.write(info + '\n')
 
 
+class AutomaticWeightedLoss(nn.Module):
+    """automatically weighted multi-task loss
+    Params：
+        num: int，the number of loss
+        x: multi-task loss
+    Examples：
+        loss1=1
+        loss2=2
+        awl = AutomaticWeightedLoss(2)
+        loss_sum = awl(loss1, loss2)
+    """
+
+    def __init__(self, num=2):
+        super(AutomaticWeightedLoss, self).__init__()
+        params = torch.ones(num, requires_grad=True)
+        self.params = nn.Parameter(params)
+
+    def forward(self, *x):
+        loss_sum = 0
+        for i, loss in enumerate(x):
+            loss_sum += 0.5 / (self.params[i] ** 2) * loss + torch.log(1 + self.params[i] ** 2)
+        return loss_sum
+
+
 class Engine(object):
     def __init__(self, args):
         self.args = args
         self.model = Model(args)
         self.optimizer = op.Adam(self.model.pv_net_ctx.network.parameters(), lr=self.args.lr,
                                  weight_decay=self.args.weight_decay)
+        self.awl = AutomaticWeightedLoss(num=6)
 
     def train(self, data):
         self.model.train_mode = True
@@ -131,7 +157,12 @@ class Engine(object):
             kl_d_expand = self.kl_divengence(expand_dist_out, corrected_distribution)
             kl_d_expand_augment = self.kl_divengence(expand_dist_out_augment, corrected_distribution_augment)
 
-            total_loss = kl_d_selection + kl_d_selection_augment + mse_value + mse_value_augment + kl_d_expand + kl_d_expand_augment
+            # total_loss = self.awl(kl_d_selection, kl_d_selection_augment, mse_value, mse_value_augment, kl_d_expand,
+            #                       kl_d_expand_augment)
+            print(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())))
+            write_log(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())), "./records/illness")
+            total_loss = kl_d_selection + kl_d_selection_augment + 5 * (mse_value + mse_value_augment) + 10000 * (
+                    kl_d_expand + kl_d_expand_augment)
             cumulative_loss += total_loss.item()
             total_loss.backward(retain_graph=True)
             if self.args.clip is not None:
@@ -215,7 +246,7 @@ class Metrics:
             "sqrt", "np.sqrt").replace("log", "np.log")
         try:
             f = lambda x: eval(corrected_expression)
-        except ValueError or NameError:
+        except (ValueError, NameError):
             write_log(corrected_expression, "./records/exception_records")
             return np.nan, np.nan, np.nan, np.nan, None
 
