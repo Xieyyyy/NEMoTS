@@ -57,7 +57,7 @@ parser.add_argument("--train_size", type=float, default=64)
 
 # -- analysis
 parser.add_argument("--recording", action="store_true", default=False)
-parser.add_argument("--tag", type=str, default="illness", help='')
+parser.add_argument("--tag", type=str, default="illness_nonn", help='')
 
 args = parser.parse_args()
 

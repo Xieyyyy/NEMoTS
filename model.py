@@ -64,46 +64,6 @@ class Model():
             input_data)
         return all_eqs, test_scores, supervision_data
 
-    def eval(self, input_data):
-        all_eqs = []
-        test_scores = []
-
-        for i_test in range(self.num_runs):
-            best_solution = ('nothing', 0)
-
-            max_module = self.max_module_init  # 设置最大模块
-            reward_his = []  # 初始化奖励历史
-            aug_grammars = []  # 初始化增强语法
-
-            mcts = MCTS(data_sample=input_data,
-                        base_grammars=self.base_grammar,
-                        aug_grammars=aug_grammars,
-                        nt_nodes=self.nt_nodes,
-                        max_len=self.max_len,
-                        max_module=max_module,
-                        aug_grammars_allowed=self.num_aug,
-                        func_score=self.score_with_est,
-                        exploration_rate=self.exploration_rate,
-                        eta=self.eta)
-
-            _, current_solution, _, _, _ = mcts.run(self.transplant_step,
-                                                    num_play=10,
-                                                    print_flag=True)
-            reward_his.append(best_solution[1])
-            if current_solution[1] > best_solution[1]:
-                best_solution = current_solution
-
-            test_score = \
-                self.score_with_est(score.simplify_eq(best_solution[0]), 0, input_data, eta=self.eta)[0]
-            all_eqs.append(score.simplify_eq(best_solution[0]))
-            test_scores.append(test_score)
-
-            print('best solution: {}'.format(score.simplify_eq(best_solution[0])))
-            print('test score: {}'.format(test_score))
-            print()
-
-        return all_eqs, test_scores, input_data
-
     def train(self, input_data, supervision_data):
         all_eqs = []
         test_scores = []
@@ -131,9 +91,9 @@ class Model():
                             exploration_rate=self.exploration_rate,
                             eta=self.eta)
 
-                reward_his, best_solution, good_modules = mcts.run(self.transplant_step,
-                                                                   num_play=10,
-                                                                   print_flag=True)
+                _, current_solution, good_modules = mcts.run(self.transplant_step,
+                                                             num_play=10,
+                                                             print_flag=True)
 
                 # 如果没有最佳模块，则将好的模块赋值给最佳模块
                 if not best_modules:
