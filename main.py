@@ -96,63 +96,72 @@ def main():
         train_loss = 0
         train_n_samples = 0
         train_maes, train_mses, train_r2s, train_corrs, test_maes, test_mses, test_r2s, test_corrs = [], [], [], [], [], [], [], []
-        for iter, (data, _, _, _) in enumerate(train_loader):
-            iter_start_time = time.time()  # 记录迭代开始时间
+        # for iter, (data, _, _, _) in enumerate(train_loader):
+        data = np.array([[1.19821898, 2.28032398, 3.34332535, 4.39643797, 5.44323112,
+                          6.48553537, 7.52443814, 8.56064795, 9.59465695, 10.62682347,
+                          11.657418, 12.6866507, 13.71468871, 14.74166753, 15.76769883,
+                          16.79287594, 17.81727781, 18.84097193, 19.86401652, 20.88646225,
+                          21.9083535, 22.92972945, 23.95062485, 24.97107074, 25.99109492,
+                          27.01072247, 28.02997606, 29.04887628, 30.0674419, 31.08569009,
+                          32.1036366, 33.1212959, 34.13868137, 35.15580536, 36.17267933,
+                          37.18931391]])
 
-            train_data = data[..., args.used_dimension].float()
-            best_exp, test_data, loss, mae, mse, r_squared, corr = engine.train(train_data)
-            train_maes.append(mae)
-            train_mses.append(mse)
-            train_r2s.append(r_squared)
-            train_corrs.append(corr)
-            train_loss += loss
-            train_n_samples += 1
+        iter_start_time = time.time()  # 记录迭代开始时间
 
-            iter_end_time = time.time()  # 记录迭代结束时间
-            iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
+        train_data = data
+        best_exp, test_data, loss, mae, mse, r_squared, corr = engine.train(train_data)
+        train_maes.append(mae)
+        train_mses.append(mse)
+        train_r2s.append(r_squared)
+        train_corrs.append(corr)
+        train_loss += loss
+        train_n_samples += 1
 
-            log = 'Iter: {:03d}, Time: {:.4f} sec, Train Loss: {:.4f}, Train MAE: ' \
-                  '{:.4f}, Train MSE: {:.4f}, Train R2: {:.4f}, Train CORR: {:.4f}'.format(
-                iter, iter_duration, train_loss / train_n_samples, mae, mse, r_squared, corr)
+        iter_end_time = time.time()  # 记录迭代结束时间
+        iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
 
-            print(log, flush=True)  # 打印日志
+        log = 'Iter: {:03d}, Time: {:.4f} sec, Train Loss: {:.4f}, Train MAE: ' \
+              '{:.4f}, Train MSE: {:.4f}, Train R2: {:.4f}, Train CORR: {:.4f}'.format(
+            iter, iter_duration, train_loss / train_n_samples, mae, mse, r_squared, corr)
 
-            if args.recording:
-                write_log(str(best_exp), "./records/" + args.tag)
-                write_log(str(test_data[1]), "./records/" + args.tag)
-                write_log(log, "./records/" + args.tag)  # 将含有时间消耗的日志写入文件
-                # write_log("----------------------------------------", "./records/" + args.tag)
-                # torch.save(engine.model.pv_net_ctx.network.state_dict(), 'model_checkpoint.pth')
-                # if train_loss != 0:
-                #     sw.add_scalar('Training/Loss', train_loss / train_n_samples, iter)
+        print(log, flush=True)  # 打印日志
 
-        torch.cuda.empty_cache()
+        if args.recording:
+            write_log(str(best_exp), "./records/" + args.tag)
+            write_log(str(test_data[1]), "./records/" + args.tag)
+            write_log(log, "./records/" + args.tag)  # 将含有时间消耗的日志写入文件
+            # write_log("----------------------------------------", "./records/" + args.tag)
+            # torch.save(engine.model.pv_net_ctx.network.state_dict(), 'model_checkpoint.pth')
+            # if train_loss != 0:
+            #     sw.add_scalar('Training/Loss', train_loss / train_n_samples, iter)
 
-        for iter, (data, _, _, _) in enumerate(test_loader):
-            iter_start_time = time.time()  # 记录迭代开始时间
+    torch.cuda.empty_cache()
 
-            test_data = data[..., args.used_dimension].float()
-            best_exp, test_data, mae, mse, r_squared, corr = engine.eval(test_data)
-            test_maes.append(mae)
-            test_mses.append(mse)
-            test_r2s.append(r_squared)
-            test_corrs.append(corr)
+    for iter, (data, _, _, _) in enumerate(test_loader):
+        iter_start_time = time.time()  # 记录迭代开始时间
 
-            iter_end_time = time.time()  # 记录迭代结束时间
-            iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
+        test_data = data[..., args.used_dimension].float()
+        best_exp, test_data, mae, mse, r_squared, corr = engine.eval(test_data)
+        test_maes.append(mae)
+        test_mses.append(mse)
+        test_r2s.append(r_squared)
+        test_corrs.append(corr)
 
-            # 构建日志信息，包括时间消耗
-            log = 'Iter: {:03d}, Time: {:.4f} sec, Test MAE: {:.4f}, ' \
-                  'Test MSE: {:.4f}, Test R2: {:.4f}, Test CORR: {:.4f}'.format(
-                iter, iter_duration, mae, mse, r_squared, corr)
+        iter_end_time = time.time()  # 记录迭代结束时间
+        iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
 
-            print(log, flush=True)  # 打印日志
+        # 构建日志信息，包括时间消耗
+        log = 'Iter: {:03d}, Time: {:.4f} sec, Test MAE: {:.4f}, ' \
+              'Test MSE: {:.4f}, Test R2: {:.4f}, Test CORR: {:.4f}'.format(
+            iter, iter_duration, mae, mse, r_squared, corr)
 
-            if args.recording:
-                write_log(str(best_exp), "./records/" + args.tag)
-                write_log(str(test_data[1]), "./records/" + args.tag)
-                write_log(log, "./records/" + args.tag)
-                write_log("\n", "./records/" + args.tag)
+        print(log, flush=True)  # 打印日志
+
+        if args.recording:
+            write_log(str(best_exp), "./records/" + args.tag)
+            write_log(str(test_data[1]), "./records/" + args.tag)
+            write_log(log, "./records/" + args.tag)
+            write_log("\n", "./records/" + args.tag)
 
 
 if __name__ == '__main__':

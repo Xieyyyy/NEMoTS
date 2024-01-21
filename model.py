@@ -41,16 +41,16 @@ class Model():
         self.train_mode = train
 
     def run(self, X, y=None):
-
-        assert X.size(0) == 1
+        # print(X.shape)
+        assert X.shape[0] == 1
         if self.train_mode:
             assert y is not None
         if y is not None:
             X = X.squeeze(0)
             y = y.squeeze(0)
 
-            time_idx = np.arange(X.size(0) + y.shape[0])
-            input_data = np.vstack([time_idx[:X.size(0)], X])
+            time_idx = np.arange(X.shape[0] + y.shape[0])
+            input_data = np.vstack([time_idx[:X.shape[0]], X])
 
             supervision_data = np.vstack([time_idx, np.concatenate([X, y])])
         else:
