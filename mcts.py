@@ -424,7 +424,7 @@ class MCTS():
                 # print(len(policy))
                 action = np.random.choice(UC, p=policy_UC)
                 # print(str((policy, policy_UC)))
-                write_log(str((self.train, list(policy_UC))), "./records/illness_prob")
+                # write_log(str((self.train, list(policy_UC))), "./records/illness_prob")
                 # print(action)
                 # action = 11
                 # 执行选定的动作的索引，获得新的状态、非终止节点、奖励、是否完成以及方程
@@ -447,8 +447,8 @@ class MCTS():
                 # 如果新的奖励大于之前最佳解的奖励，那么就更新Q/N值和最佳解
                 if reward > best_solution[1]:
                     self.update_QN_scale(reward)
-                    print((next_state, eq, reward))
-                    write_log(str((next_state, eq, reward)), "./records/illness")
+                    # print((next_state, eq, reward))
+                    # write_log(str((next_state, eq, reward)), "./records/illness")
 
                     best_solution = (eq, reward)
 
@@ -456,7 +456,7 @@ class MCTS():
                 self.backpropogate(state, action, reward)
                 reward_his.append(best_solution[1])
 
-        write_log("----------------------------------------", "./records/illness")
+        # write_log("----------------------------------------", "./records/illness")
         # 返回奖励历史、最佳解，优秀模块，用于训练拓展的样本，用于训练选择的样本
         if self.train:
             return reward_his, best_solution, self.good_modules, zip(state_records, seq_records, expand_policy_records,

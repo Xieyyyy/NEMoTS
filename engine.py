@@ -159,8 +159,8 @@ class Engine(object):
 
             # total_loss = self.awl(kl_d_selection, kl_d_selection_augment, mse_value, mse_value_augment, kl_d_expand,
             #                       kl_d_expand_augment)
-            print(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())))
-            write_log(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())), "./records/illness")
+            # print(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())))
+            # write_log(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())), "./records/illness")
             total_loss = kl_d_selection + kl_d_selection_augment + 5 * (mse_value + mse_value_augment) + 10000 * (
                     kl_d_expand + kl_d_expand_augment)
             cumulative_loss += total_loss.item()
@@ -236,6 +236,7 @@ class Engine(object):
 class Metrics:
     @staticmethod
     def metrics(exps, scores, data):
+        mae, mse, corr, r_squared, best_exp = None, None, 0., None, None  # 将 corr 的初始值设置为 0
         best_index = np.argmax(scores)
         best_exp = exps[best_index]
         span, gt = data
@@ -246,11 +247,11 @@ class Metrics:
             "sqrt", "np.sqrt").replace("log", "np.log")
         try:
             f = lambda x: eval(corrected_expression)
+            prediction = f(span)
         except (ValueError, NameError):
             write_log(corrected_expression, "./records/exception_records")
             return np.nan, np.nan, np.nan, np.nan, None
 
-        prediction = f(span)
         mae = np.mean(np.abs(prediction - gt))
         mse = np.mean((prediction - gt) ** 2)
 

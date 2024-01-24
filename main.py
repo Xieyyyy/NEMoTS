@@ -41,7 +41,7 @@ parser.add_argument('--transplant_step', type=int, default=1000)
 parser.add_argument('--norm_threshold', type=float, default=1e-5)
 
 # -- training
-parser.add_argument("--seed", type=int, default=42, help='random seed')
+parser.add_argument("--seed", type=int, default=52, help='random seed')
 parser.add_argument("--round", type=int, default=10, help='epoch')
 parser.add_argument("--epoch", type=int, default=50, help='epoch')
 parser.add_argument("--seq_in", type=int, default=30, help='length of input seq')
@@ -56,7 +56,7 @@ parser.add_argument("--lr_decay", type=float, default=1)
 parser.add_argument("--train_size", type=float, default=64)
 
 # -- analysis
-parser.add_argument("--recording", action="store_true", default=True)
+parser.add_argument("--recording", action="store_true", default=False)
 parser.add_argument("--tag", type=str, default="illness", help='')
 
 args = parser.parse_args()

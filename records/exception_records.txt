@@ -1,0 +1,2 @@
+np.sqrt(A)
+A*np.cos(A) + A
