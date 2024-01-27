@@ -68,7 +68,7 @@ class PVNet(nn.Module):
         self.grammar_vocab = grammar_vocab
         self.embedding_table = nn.Embedding(len(self.grammar_vocab) + 1, hidden_dim)
         self.state_lstm = nn.LSTM(input_size=hidden_dim, hidden_size=hidden_dim, num_layers=2, batch_first=True)
-        self.seq_lstm = TCNModel(input_size=1, output_size=16, num_channels=[16, 16, 16], kernel_size=5, dropout=0.2)
+        self.seq_tcn = TCNModel(input_size=1, output_size=16, num_channels=[16, 16, 16], kernel_size=5, dropout=0.2)
         self.mlp = nn.Sequential(nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=True),
                                  nn.ReLU(),
                                  nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=True))
@@ -82,7 +82,7 @@ class PVNet(nn.Module):
         state = self.embedding_table(state_id.long()) if need_embeddings else state_id
         seq = seq.unsqueeze(-1)
         out_state, _ = self.state_lstm(state)
-        out_seq = self.seq_lstm(seq)
+        out_seq = self.seq_tcn(seq)
 
         out = torch.cat([out_seq[:, -1, :], out_state[:, -1, :]], dim=-1)
         out = self.mlp(out)
