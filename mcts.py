@@ -271,7 +271,7 @@ class MCTS():
 
     def get_policy1(self, nA, state, node, network):
         valid_action = self.valid_prods(node)
-        policy_valid, _, _ = self.aquire_nn(state, network)
+        policy_valid, _ = self.aquire_nn(state, network)
         policy_valid = self.softmax(policy_valid.squeeze(0).cpu().detach().numpy()[:len(valid_action)])
         sum_ucb = sum(self.UCBs[state][valid_action])
         for idx, a in enumerate(valid_action):
@@ -300,16 +300,10 @@ class MCTS():
         A[UC] += float(1 / len(UC))
         return A
 
-    def get_policy3(self, state, network, node, UC):
-        valid_action = self.valid_prods(node)
-        _, policy_expand, _ = self.aquire_nn(state, network)
-        policy_expand = policy_expand.squeeze(0).cpu().detach().numpy()[:len(valid_action)]
-        return self.softmax(policy_expand), self.softmax(policy_expand[UC])
-
     def aquire_nn(self, state, network):
         seq = self.input_data
-        selection_dist_out, expand_dist_out, value_out = network.policy_value(seq, state)
-        return selection_dist_out, expand_dist_out, value_out
+        selection_dist_out, value_out = network.policy_value(seq, state)
+        return selection_dist_out, value_out
 
     def update_modules(self, state, reward, eq):
         """
@@ -426,9 +420,9 @@ class MCTS():
             if UC:
                 # 按照策略2拓展一个动作
                 # print(state)
-                policy, policy_UC = self.get_policy3(state, network, ntn[0], UC)
+                policy = self.get_policy2(nA, UC)
                 # print(len(policy))
-                action = np.random.choice(UC, p=policy_UC)
+                action = np.random.choice(UC, p=policy)
                 # print(str((policy, policy_UC)))
                 # write_log(str((self.train, list(policy_UC))), "./records/illness_prob")
                 # print(action)

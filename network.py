@@ -26,7 +26,6 @@ class TemporalBlock(nn.Module):
         return self.relu(out + res)
 
 
-
 class TemporalConvNet(nn.Module):
     def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2):
         super(TemporalConvNet, self).__init__()
@@ -74,10 +73,9 @@ class PVNet(nn.Module):
                                  nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=True))
 
         self.selection_dist = nn.Linear(hidden_dim * 2, len(self.grammar_vocab) - 1)
-        self.expand_dist = nn.Linear(hidden_dim * 2, len(self.grammar_vocab) - 1)
         self.value = nn.Linear(hidden_dim * 2, 1)
 
-    def forward(self, seq, state_id, need_embeddings=True, output_selection_dist=True, output_expand_dist=True,
+    def forward(self, seq, state_id, need_embeddings=True, output_selection_dist=True,
                 output_value=True):
         state = self.embedding_table(state_id.long()) if need_embeddings else state_id
         seq = seq.unsqueeze(-1)
@@ -91,12 +89,10 @@ class PVNet(nn.Module):
         # Compute outputs conditionally
         if output_selection_dist:
             selection_dist_out = self.selection_dist(out)
-        if output_expand_dist:
-            expand_dist_out = self.expand_dist(out)
         if output_value:
             value_out = F.sigmoid(self.value(out))
 
-        return selection_dist_out, expand_dist_out, value_out
+        return selection_dist_out, value_out
 
 
 class PVNetCtx:
