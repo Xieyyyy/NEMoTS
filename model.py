@@ -2,8 +2,8 @@ from collections import defaultdict, deque
 
 import numpy as np
 
-import json
 
+import json
 import score
 import symbolics
 from mcts import MCTS
@@ -36,9 +36,9 @@ class Model():
         self.data_buffer_expand_augment = deque(maxlen=1024)
         self.pv_net_ctx = PVNetCtx(grammars=self.base_grammar, device=self.device)
 
-        self.aug_grammars_counter = defaultdict(lambda: 0)
-        # with open("./aug_grammars.json", "r") as f:
-        #     self.aug_grammars_counter = json.load(f)
+        # self.aug_grammars_counter = defaultdict(lambda: 0)
+        with open("./aug_grammars.json", "r") as f:
+            self.aug_grammars_counter = json.load(f)
 
         self.train_mode = train
 
@@ -47,7 +47,6 @@ class Model():
         assert X.size(0) == 1
         if self.train_mode:
             assert y is not None
-        if y is not None:
             X = X.squeeze(0)
             y = y.squeeze(0)
 
@@ -77,7 +76,8 @@ class Model():
             reward_his = []  # 初始化奖励历史
             aug_grammars = []  # 初始化增强语法
 
-            mcts = MCTS(data_sample=input_data,
+            mcts = MCTS(input_data=input_data,
+                        supervision_data=None,
                         base_grammars=self.base_grammar,
                         aug_grammars=aug_grammars,
                         nt_nodes=self.nt_nodes,
@@ -89,6 +89,7 @@ class Model():
                         eta=self.eta,
                         train=False,
                         aug_grammar_table=self.aug_grammars_counter)
+
             _, current_solution, _, _, _ = mcts.run(self.transplant_step,
                                                     network=self.pv_net_ctx,
                                                     num_play=10,
@@ -124,7 +125,8 @@ class Model():
             aug_grammars = []  # 初始化增强语法
 
             for i_itr in range(self.num_transplant):
-                mcts = MCTS(data_sample=input_data,
+                mcts = MCTS(input_data=input_data,
+                            supervision_data=supervision_data,
                             base_grammars=self.base_grammar,
                             aug_grammars=aug_grammars,
                             nt_nodes=self.nt_nodes,
@@ -164,6 +166,7 @@ class Model():
                 # 如果当前解决方案的评分大于最佳解决方案的评分，则更新最佳解决方案
                 if current_solution[1] > best_solution[1]:
                     best_solution = current_solution
+                print(current_solution[0])
 
                 # 增加最大模块
                 max_module += module_grow_step

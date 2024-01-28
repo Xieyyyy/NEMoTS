@@ -11,9 +11,12 @@ def write_log(info, file_dir):
 
 
 class MCTS():
-    def __init__(self, data_sample, base_grammars, aug_grammars, nt_nodes, max_len, max_module, aug_grammars_allowed,
-                 func_score, exploration_rate=1 / np.sqrt(2), eta=0.999, train=True, aug_grammar_table=None):
-        self.data_sample = data_sample
+    def __init__(self, input_data, base_grammars, aug_grammars, nt_nodes, max_len, max_module,
+                 aug_grammars_allowed, func_score, exploration_rate=1 / np.sqrt(2), eta=0.999, supervision_data=None,
+                 train=True,
+                 aug_grammar_table=None):
+        self.input_data = input_data
+        self.supervision_data = supervision_data
         self.base_grammars = base_grammars
         aug_grammars = aug_grammars if train else ["A->placeholder"]
         self.grammars = base_grammars + [x for x in aug_grammars if
@@ -36,6 +39,7 @@ class MCTS():
         self.train = train
         if not self.train:
             self.aug_grammar_table = aug_grammar_table
+            self.supervision_data = input_data
 
     def valid_prods(self, Node):
         """
@@ -149,7 +153,6 @@ class MCTS():
         action = self.secondary_sample(remain_count=10) if action == "A->placeholder" else action
         # 将选择的动作添加到当前的状态字符串。
         state = state + ',' + action
-        # print(state)
 
         # 获取由新的动作产生的非终端节点，并更新ntn列表。注意，这里ntn[1:]是将原有ntn列表中的第一个元素（也就是被替换的非终端节点）去掉。
         ntn = self.get_ntn(action, action_idx) + ntn[1:]
@@ -157,13 +160,14 @@ class MCTS():
         # 检查是否还有剩余的非终端节点。
         if not ntn:
             # 如果没有剩余的非终端节点，那么就通过score方法计算当前状态的得分，并将状态字符串转化为等式。
-            reward, eq = self.score(self.tree_to_eq(state.split(',')), len(state.split(',')), self.data_sample,
+            reward, eq = self.score(self.tree_to_eq(state.split(',')), len(state.split(',')), self.supervision_data,
                                     eta=self.eta)
 
             # 返回新的状态，空的非终端节点列表，奖励，结束标志（为真），以及等式。
             return state, ntn, reward, True, eq
         else:
             # 如果还有剩余的非终端节点，那么返回新的状态，新的非终端节点列表，奖励为0（因为还未到达终止状态），结束标志（为假），以及等式为None（因为还未到达终止状态，无法形成完整等式）。
+            # print("Else")
             return state, ntn, 0, False, None
 
     def rollout(self, num_play, state_initial, ntn_initial):
@@ -198,8 +202,10 @@ class MCTS():
 
     def nn_est_reward(self, state, network):
         reward = self.aquire_nn(state, network)[2].item()
-        eq = self.tree_to_eq(state.split(','))
-        return reward, eq
+        states = state.split(',')
+
+        eq = self.tree_to_eq(states)
+        return reward, eq.replace("A", "x")
 
     def update_ucb_mcts(self, state, action):
         """
@@ -301,7 +307,7 @@ class MCTS():
         return self.softmax(policy_expand), self.softmax(policy_expand[UC])
 
     def aquire_nn(self, state, network):
-        seq = self.data_sample
+        seq = self.input_data
         selection_dist_out, expand_dist_out, value_out = network.policy_value(seq, state)
         return selection_dist_out, expand_dist_out, value_out
 
@@ -376,7 +382,7 @@ class MCTS():
                 if self.train:
                     selection_policy_records.append(policy)
                     selection_state_records.append(state)
-                    selection_seq_records.append(self.data_sample)
+                    selection_seq_records.append(self.input_data)
 
                 # 执行选定的动作，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
@@ -432,7 +438,7 @@ class MCTS():
 
                 if eq is not None and self.train:
                     state_records.append(state)
-                    seq_records.append(self.data_sample)
+                    seq_records.append(self.input_data)
                     expand_policy_records.append(policy)
                     value_records.append(reward)
 
