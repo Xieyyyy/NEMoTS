@@ -96,37 +96,37 @@ def main():
         train_loss = 0
         train_n_samples = 0
         train_maes, train_mses, train_r2s, train_corrs, test_maes, test_mses, test_r2s, test_corrs = [], [], [], [], [], [], [], []
-        # for iter, (data, _, _, _) in enumerate(train_loader):
-        #     iter_start_time = time.time()  # 记录迭代开始时间
-        #
-        #     train_data = data[..., args.used_dimension].float()
-        #     best_exp, test_data, loss, mae, mse, r_squared, corr = engine.train(train_data)
-        #     train_maes.append(mae)
-        #     train_mses.append(mse)
-        #     train_r2s.append(r_squared)
-        #     train_corrs.append(corr)
-        #     train_loss += loss
-        #     train_n_samples += 1
-        #
-        #     iter_end_time = time.time()  # 记录迭代结束时间
-        #     iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
-        #
-        #     log = 'Iter: {:03d}, Time: {:.4f} sec, Train Loss: {:.4f}, Train MAE: ' \
-        #           '{:.4f}, Train MSE: {:.4f}, Train R2: {:.4f}, Train CORR: {:.4f}'.format(
-        #         iter, iter_duration, train_loss / train_n_samples, mae, mse, r_squared, corr)
-        #
-        #     print(log, flush=True)  # 打印日志
-        #
-        #     if args.recording:
-        #         write_log(str(best_exp), "./records/" + args.tag)
-        #         write_log(str(test_data[1]), "./records/" + args.tag)
-        #         write_log(log, "./records/" + args.tag)  # 将含有时间消耗的日志写入文件
-        #         write_log("----------------------------------------", "./records/" + args.tag)
-        #         # torch.save(engine.model.pv_net_ctx.network.state_dict(), 'model_checkpoint.pth')
-        #         # if train_loss != 0:
-        #         #     sw.add_scalar('Training/Loss', train_loss / train_n_samples, iter)
-        #
-        # torch.cuda.empty_cache()
+        for iter, (data, _, _, _) in enumerate(train_loader):
+            iter_start_time = time.time()  # 记录迭代开始时间
+
+            train_data = data[..., args.used_dimension].float()
+            best_exp, test_data, loss, mae, mse, r_squared, corr = engine.train(train_data)
+            train_maes.append(mae)
+            train_mses.append(mse)
+            train_r2s.append(r_squared)
+            train_corrs.append(corr)
+            train_loss += loss
+            train_n_samples += 1
+
+            iter_end_time = time.time()  # 记录迭代结束时间
+            iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
+
+            log = 'Iter: {:03d}, Time: {:.4f} sec, Train Loss: {:.4f}, Train MAE: ' \
+                  '{:.4f}, Train MSE: {:.4f}, Train R2: {:.4f}, Train CORR: {:.4f}'.format(
+                iter, iter_duration, train_loss / train_n_samples, mae, mse, r_squared, corr)
+
+            print(log, flush=True)  # 打印日志
+
+            if args.recording:
+                write_log(str(best_exp), "./records/" + args.tag)
+                write_log(str(test_data[1]), "./records/" + args.tag)
+                write_log(log, "./records/" + args.tag)  # 将含有时间消耗的日志写入文件
+                write_log("----------------------------------------", "./records/" + args.tag)
+                # torch.save(engine.model.pv_net_ctx.network.state_dict(), 'model_checkpoint.pth')
+                # if train_loss != 0:
+                #     sw.add_scalar('Training/Loss', train_loss / train_n_samples, iter)
+
+        torch.cuda.empty_cache()
 
         for iter, (data, _, _, _) in enumerate(test_loader):
             iter_start_time = time.time()  # 记录迭代开始时间
