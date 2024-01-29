@@ -47,7 +47,7 @@ class Engine(object):
         self.model = Model(args)
         self.optimizer = op.Adam(self.model.pv_net_ctx.network.parameters(), lr=self.args.lr,
                                  weight_decay=self.args.weight_decay)
-        self.awl = AutomaticWeightedLoss(num=6)
+        # self.awl = AutomaticWeightedLoss(num=6)
 
     def train(self, data):
         self.model.train_mode = True
@@ -55,8 +55,7 @@ class Engine(object):
         all_eqs, test_scores, test_data = self.model.run(X, y)
         mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data)
         if all(len(data_buffer) > self.args.train_size for data_buffer in
-               [self.model.data_buffer_selection, self.model.data_buffer_selection_augment,
-                self.model.data_buffer_expand, self.model.data_buffer_expand_augment]):
+               [self.model.data_buffer_selection, self.model.data_buffer_rollout]):
             loss = self.optimize()
             return best_exp, test_data, loss, mae, mse, r_squared, corr
         return best_exp, test_data, 0, mae, mse, r_squared, corr
@@ -105,64 +104,29 @@ class Engine(object):
         cumulative_loss = 0
         for _ in range(self.args.epoch):
             self.optimizer.zero_grad()
-            value_batch_expand, \
-            value_batch_expand_augment, \
-            policy_batch_selection, \
-            policy_batch_selection_augment, \
             state_batch_selection, \
             seq_batch_selection, \
-            state_batch_selection_augment, \
-            seq_batch_selection_augment, \
-            state_batch_expand, \
-            seq_batch_expand, \
-            state_batch_expand_augment, \
-            seq_batch_expand_augment = self.vectorize_data()
+            policy_batch_selection, \
+            state_batch_rollout, \
+            seq_batch_rollout, \
+            value_batch_rollout = self.vectorize_data()
 
             # no augment in selection
             selection_dist_out = F.softmax(
                 self.model.pv_net_ctx.network(seq_batch_selection,
                                               state_batch_selection,
                                               False,
-                                              output_expand_dist=False,
                                               output_value=False)[0][:, :-1], dim=-1)
-            selection_dist_out_augment = F.softmax(
-                self.model.pv_net_ctx.network(seq_batch_selection,
-                                              state_batch_selection,
-                                              False,
-                                              output_expand_dist=False,
-                                              output_value=False)[0], dim=-1)
+            value_out = self.model.pv_net_ctx.network(seq_batch_rollout,
+                                                      state_batch_rollout,
+                                                      False,
+                                                      output_selection_dist=False)
 
-            expand_dist_out, reward_out = self.model.pv_net_ctx.network(seq_batch_expand,
-                                                                        state_batch_expand,
-                                                                        False,
-                                                                        output_selection_dist=False)[-2:]
+            kl_d_loss = self.kl_divengence(selection_dist_out, policy_batch_selection)
 
-            expand_dist_out_augment, reward_out_augment = self.model.pv_net_ctx.network(seq_batch_expand_augment,
-                                                                                        state_batch_expand_augment,
-                                                                                        False,
-                                                                                        output_selection_dist=False)[
-                                                          -2:]
-            expand_dist_out = F.softmax(expand_dist_out, dim=-1)
-            expand_dist_out_augment = F.softmax(expand_dist_out_augment, dim=-1)
+            mse_loss = F.mse_loss(value_out, value_batch_rollout, size_average=False)
 
-            kl_d_selection = self.kl_divengence(selection_dist_out, policy_batch_selection)
-            kl_d_selection_augment = self.kl_divengence(selection_dist_out_augment, policy_batch_selection_augment)
-
-            mse_value = F.mse_loss(reward_out, value_batch_expand, size_average=False)
-            mse_value_augment = F.mse_loss(reward_out_augment, value_batch_expand_augment, size_average=False)
-
-            corrected_distribution = self.mix_distribution(expand_dist_out, reward_out)
-            corrected_distribution_augment = self.mix_distribution(expand_dist_out_augment, reward_out_augment)
-
-            kl_d_expand = self.kl_divengence(expand_dist_out, corrected_distribution)
-            kl_d_expand_augment = self.kl_divengence(expand_dist_out_augment, corrected_distribution_augment)
-
-            # total_loss = self.awl(kl_d_selection, kl_d_selection_augment, mse_value, mse_value_augment, kl_d_expand,
-            #                       kl_d_expand_augment)
-            # print(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())))
-            # write_log(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())), "./records/illness")
-            total_loss = kl_d_selection + kl_d_selection_augment + 5 * (mse_value + mse_value_augment) + 10000 * (
-                    kl_d_expand + kl_d_expand_augment)
+            total_loss = kl_d_loss + mse_loss
             cumulative_loss += total_loss.item()
             total_loss.backward(retain_graph=True)
             if self.args.clip is not None:
@@ -176,61 +140,37 @@ class Engine(object):
         seq_batch_selection, \
         policy_batch_selection = self.prepare_data(self.model.data_buffer_selection, value=False)
 
-        state_batch_selection_augment, \
-        seq_batch_selection_augment, \
-        policy_batch_selection_augment = self.prepare_data(self.model.data_buffer_selection_augment, value=False)
+        state_batch_rollout, \
+        seq_batch_rollout, \
+        value_batch_rollout = self.prepare_data(self.model.data_buffer_rollout, value=True)
 
-        state_batch_expand, \
-        seq_batch_expand, \
-        policy_batch_expand, \
-        value_batch_expand = self.prepare_data(self.model.data_buffer_expand)
+        state_batch_selection, seq_batch_selection = self.model.pv_net_ctx.batchfy(seq_batch_selection,
+                                                                                   state_batch_selection)
 
-        state_batch_expand_augment, \
-        seq_batch_expand_augment, \
-        policy_batch_expand_augment, \
-        value_batch_expand_augment = self.prepare_data(self.model.data_buffer_expand_augment)
-
-        value_batch_expand, \
-        value_batch_expand_augment, \
+        state_batch_rollout, seq_batch_rollout = self.model.pv_net_ctx.batchfy(seq_batch_rollout,
+                                                                               state_batch_rollout)
         policy_batch_selection, \
-        policy_batch_selection_augment = \
-            torch.Tensor(value_batch_expand).to(self.args.device), \
-            torch.Tensor(value_batch_expand_augment).to(self.args.device), \
-            torch.Tensor(policy_batch_selection).to(self.args.device), \
-            torch.Tensor(policy_batch_selection_augment).to(self.args.device)  # [64],[64],[64,11],[64,11]
+        value_batch_rollout = torch.Tensor(policy_batch_selection).to(self.args.device), torch.Tensor(
+            value_batch_rollout).to(self.args.device)
 
-        state_batch_selection, \
-        seq_batch_selection = self.model.pv_net_ctx.batchfy(seq_batch_selection,
-                                                            state_batch_selection)  # 【64,3(lengtn),16】
-
-        state_batch_selection_augment, \
-        seq_batch_selection_augment = self.model.pv_net_ctx.batchfy(seq_batch_selection_augment,
-                                                                    state_batch_selection_augment)
-
-        state_batch_expand, \
-        seq_batch_expand = self.model.pv_net_ctx.batchfy(seq_batch_expand, state_batch_expand)
-
-        state_batch_expand_augment, \
-        seq_batch_expand_augment = self.model.pv_net_ctx.batchfy(seq_batch_expand_augment, state_batch_expand_augment)
-
-        return value_batch_expand, value_batch_expand_augment, policy_batch_selection, policy_batch_selection_augment, \
-               state_batch_selection, seq_batch_selection, state_batch_selection_augment, seq_batch_selection_augment, \
-               state_batch_expand, seq_batch_expand, state_batch_expand_augment, seq_batch_expand_augment
+        return state_batch_selection, \
+               seq_batch_selection, \
+               policy_batch_selection, \
+               state_batch_rollout, \
+               seq_batch_rollout, \
+               value_batch_rollout
 
     def prepare_data(self, data_buffer, value=True):
         if value:
-            non_nan_indices = [index for index, value in enumerate(data_buffer) if not math.isnan(value[3])]
+            non_nan_indices = [index for index, value in enumerate(data_buffer) if not math.isnan(value[2])]
             sampled_idx = random.sample(non_nan_indices, min(len(non_nan_indices), self.args.train_size))
         else:
             sampled_idx = random.sample(range(len(data_buffer)), self.args.train_size)
         mini_batch = [data_buffer[i] for i in sampled_idx]
         state_batch = [data[0] for data in mini_batch]
         seq_batch = [data[1][1] for data in mini_batch]
-        policy_batch = [data[2] for data in mini_batch]
-        if value:
-            value_batch = [data[3] for data in mini_batch]
-            return state_batch, seq_batch, policy_batch, value_batch
-        return state_batch, seq_batch, policy_batch
+        ground_truth_batch = [data[2] for data in mini_batch]
+        return state_batch, seq_batch, ground_truth_batch
 
 
 class Metrics:

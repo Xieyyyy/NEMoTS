@@ -342,10 +342,9 @@ class MCTS():
         # 初始化一个用于存储奖励历史的空列表
         reward_his = []
         if self.train:
-            state_records = []
-            seq_records = []
-            expand_policy_records = []
-            value_records = []
+            rollout_state_records = []
+            rollout_seq_records = []
+            rollout_value_records = []
             selection_policy_records = []
             selection_state_records = []
             selection_seq_records = []
@@ -422,19 +421,15 @@ class MCTS():
                 # print(state)
                 policy = self.get_policy2(nA, UC)
                 # print(len(policy))
-                action = np.random.choice(UC, p=policy)
+                action = np.random.choice(np.arange(nA), p=policy)
+                # print(action)
+                # print(UC)
                 # print(str((policy, policy_UC)))
                 # write_log(str((self.train, list(policy_UC))), "./records/illness_prob")
                 # print(action)
                 # action = 11
                 # 执行选定的动作的索引，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
-
-                if eq is not None and self.train:
-                    state_records.append(state)
-                    seq_records.append(self.input_data)
-                    expand_policy_records.append(policy)
-                    value_records.append(reward)
 
                 # 如果新的状态不是终止状态，那么进行num_play次滚动模拟，获取最大的奖励和对应的方程
                 if not done:
@@ -443,6 +438,11 @@ class MCTS():
                         next_state, network)
                     if state not in states:
                         states.append(state)
+
+                    if eq is not '' and self.train:
+                        rollout_state_records.append(state)
+                        rollout_seq_records.append(self.input_data)
+                        rollout_value_records.append(reward)
 
                 # 如果新的奖励大于之前最佳解的奖励，那么就更新Q/N值和最佳解
                 if reward > best_solution[1]:
@@ -459,10 +459,9 @@ class MCTS():
         # write_log("----------------------------------------", "./records/illness")
         # 返回奖励历史、最佳解，优秀模块，用于训练拓展的样本，用于训练选择的样本
         if self.train:
-            return reward_his, best_solution, self.good_modules, zip(state_records, seq_records, expand_policy_records,
-                                                                     value_records), zip(selection_state_records,
-                                                                                         selection_seq_records,
-                                                                                         selection_policy_records)
+            return reward_his, best_solution, self.good_modules, \
+                   zip(rollout_state_records, rollout_seq_records, rollout_value_records), \
+                   zip(selection_state_records, selection_seq_records, selection_policy_records)
         else:
             return reward_his, best_solution, None, None, None
 

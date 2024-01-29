@@ -109,8 +109,8 @@ class PVNetCtx:
             [self.symbol2idx[item] if item in (['f->A'] + self.base_grammar) else self.symbol2idx['augment'] for item in
              state_list]).to(self.device)
         seq = torch.Tensor(seq).to(self.device)
-        selection_dist_out, expand_dist_out, value_out = self.network(seq[1, :].unsqueeze(0), state_idx.unsqueeze(0))
-        return selection_dist_out, expand_dist_out, value_out
+        selection_dist_out, value_out = self.network(seq[1, :].unsqueeze(0), state_idx.unsqueeze(0))
+        return selection_dist_out, value_out
 
     def batchfy(self, seqs, states):
         for idx, seq in enumerate(seqs):
