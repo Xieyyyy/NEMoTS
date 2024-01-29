@@ -414,7 +414,7 @@ class MCTS():
                 # 按照策略2拓展一个动作
                 # print(state)
                 policy = self.get_policy2(nA, UC)
-                print(UC)
+                # print(UC)
                 # print(len(policy))
                 action = np.random.choice(np.arange(nA), p=policy)
                 # print(str((policy, policy_UC)))
@@ -433,7 +433,7 @@ class MCTS():
                         states.append(state)
 
                     if eq is not "" and self.train:
-                        rollout_state_records.append(state)
+                        rollout_state_records.append(next_state)
                         rollout_seq_records.append(self.data_sample)
                         rollout_value_records.append(reward)
 

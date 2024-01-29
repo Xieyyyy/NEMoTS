@@ -2,8 +2,6 @@ from collections import defaultdict, deque
 
 import numpy as np
 
-import json
-
 import score
 import symbolics
 from mcts import MCTS
@@ -32,8 +30,8 @@ class Model():
         self.score_with_est = score.score_with_est
         self.data_buffer_selection = deque(maxlen=1024)
         self.data_buffer_selection_augment = deque(maxlen=1024)
-        self.data_buffer_expand = deque(maxlen=1024)
-        self.data_buffer_expand_augment = deque(maxlen=1024)
+        self.data_buffer_rollout = deque(maxlen=1024)
+        self.data_buffer_rollout_augment = deque(maxlen=1024)
         self.pv_net_ctx = PVNetCtx(grammars=self.base_grammar, device=self.device)
 
         self.aug_grammars_counter = defaultdict(lambda: 0)
@@ -135,16 +133,16 @@ class Model():
                             exploration_rate=self.exploration_rate,
                             eta=self.eta)
 
-                _, current_solution, good_modules, expand_data, selection_data = mcts.run(self.transplant_step,
-                                                                                          network=self.pv_net_ctx,
-                                                                                          num_play=10,
-                                                                                          print_flag=True)
+                _, current_solution, good_modules, rollout_data, selection_data = mcts.run(self.transplant_step,
+                                                                                           network=self.pv_net_ctx,
+                                                                                           num_play=10,
+                                                                                           print_flag=True)
                 if i_itr == 0:
                     self.data_buffer_selection.extend(list(selection_data)[:])
-                    self.data_buffer_expand.extend(list(expand_data)[:])
+                    self.data_buffer_rollout.extend(list(rollout_data)[:])
                 else:
                     self.data_buffer_selection_augment.extend(list(selection_data)[:])
-                    self.data_buffer_expand_augment.extend(list(expand_data)[:])
+                    self.data_buffer_rollout_augment.extend(list(rollout_data)[:])
 
                 # 如果没有最佳模块，则将好的模块赋值给最佳模块
                 if not best_modules:
