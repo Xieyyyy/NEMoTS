@@ -88,6 +88,7 @@ class Model():
                         eta=self.eta,
                         train=False,
                         aug_grammar_table=self.aug_grammars_counter)
+
             _, current_solution, _, _, _ = mcts.run(self.transplant_step,
                                                     network=self.pv_net_ctx,
                                                     num_play=10,
