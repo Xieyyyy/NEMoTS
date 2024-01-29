@@ -265,7 +265,7 @@ class MCTS():
 
     def get_policy1(self, nA, state, node, network):
         valid_action = self.valid_prods(node)
-        policy_valid, _, _ = self.aquire_nn(state, network)
+        policy_valid, _, = self.aquire_nn(state, network)
         policy_valid = self.softmax(policy_valid.squeeze(0).cpu().detach().numpy()[:len(valid_action)])
         sum_ucb = sum(self.UCBs[state][valid_action])
         for idx, a in enumerate(valid_action):
@@ -294,16 +294,10 @@ class MCTS():
         A[UC] += float(1 / len(UC))
         return A
 
-    def get_policy3(self, state, network, node, UC):
-        valid_action = self.valid_prods(node)
-        _, policy_expand, _ = self.aquire_nn(state, network)
-        policy_expand = policy_expand.squeeze(0).cpu().detach().numpy()[:len(valid_action)]
-        return self.softmax(policy_expand), self.softmax(policy_expand[UC])
-
     def aquire_nn(self, state, network):
         seq = self.data_sample
-        selection_dist_out, expand_dist_out, value_out = network.policy_value(seq, state)
-        return selection_dist_out, expand_dist_out, value_out
+        selection_dist_out, value_out = network.policy_value(seq, state)
+        return selection_dist_out, value_out
 
     def update_modules(self, state, reward, eq):
         """
@@ -342,10 +336,9 @@ class MCTS():
         # 初始化一个用于存储奖励历史的空列表
         reward_his = []
         if self.train:
-            state_records = []
-            seq_records = []
-            expand_policy_records = []
-            value_records = []
+            rollout_state_records = []
+            rollout_seq_records = []
+            rollout_value_records = []
             selection_policy_records = []
             selection_state_records = []
             selection_seq_records = []
@@ -420,21 +413,16 @@ class MCTS():
             if UC:
                 # 按照策略2拓展一个动作
                 # print(state)
-                policy, policy_UC = self.get_policy3(state, network, ntn[0], UC)
+                policy = self.get_policy2(nA, UC)
+                print(UC)
                 # print(len(policy))
-                action = np.random.choice(UC, p=policy_UC)
+                action = np.random.choice(np.arange(nA), p=policy)
                 # print(str((policy, policy_UC)))
                 # write_log(str((self.train, list(policy_UC))), "./records/illness_prob")
                 # print(action)
                 # action = 11
                 # 执行选定的动作的索引，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
-
-                if eq is not None and self.train:
-                    state_records.append(state)
-                    seq_records.append(self.data_sample)
-                    expand_policy_records.append(policy)
-                    value_records.append(reward)
 
                 # 如果新的状态不是终止状态，那么进行num_play次滚动模拟，获取最大的奖励和对应的方程
                 if not done:
@@ -443,6 +431,11 @@ class MCTS():
                         next_state, network)
                     if state not in states:
                         states.append(state)
+
+                    if eq is not "" and self.train:
+                        rollout_state_records.append(state)
+                        rollout_seq_records.append(self.data_sample)
+                        rollout_value_records.append(reward)
 
                 # 如果新的奖励大于之前最佳解的奖励，那么就更新Q/N值和最佳解
                 if reward > best_solution[1]:
@@ -459,10 +452,9 @@ class MCTS():
         # write_log("----------------------------------------", "./records/illness")
         # 返回奖励历史、最佳解，优秀模块，用于训练拓展的样本，用于训练选择的样本
         if self.train:
-            return reward_his, best_solution, self.good_modules, zip(state_records, seq_records, expand_policy_records,
-                                                                     value_records), zip(selection_state_records,
-                                                                                         selection_seq_records,
-                                                                                         selection_policy_records)
+            return reward_his, best_solution, self.good_modules, \
+                   zip(rollout_state_records, rollout_seq_records, rollout_value_records), \
+                   zip(selection_state_records, selection_seq_records, selection_policy_records)
         else:
             return reward_his, best_solution, None, None, None
 

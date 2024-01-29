@@ -74,10 +74,9 @@ class PVNet(nn.Module):
                                  nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=True))
 
         self.selection_dist = nn.Linear(hidden_dim * 2, len(self.grammar_vocab) - 1)
-        self.expand_dist = nn.Linear(hidden_dim * 2, len(self.grammar_vocab) - 1)
         self.value = nn.Linear(hidden_dim * 2, 1)
 
-    def forward(self, seq, state_id, need_embeddings=True, output_selection_dist=True, output_expand_dist=True,
+    def forward(self, seq, state_id, need_embeddings=True, output_selection_dist=True,
                 output_value=True):
         state = self.embedding_table(state_id.long()) if need_embeddings else state_id
         seq = seq.unsqueeze(-1)
@@ -91,12 +90,10 @@ class PVNet(nn.Module):
         # Compute outputs conditionally
         if output_selection_dist:
             selection_dist_out = self.selection_dist(out)
-        if output_expand_dist:
-            expand_dist_out = self.expand_dist(out)
         if output_value:
             value_out = F.sigmoid(self.value(out))
 
-        return selection_dist_out, expand_dist_out, value_out
+        return selection_dist_out, value_out
 
 
 class PVNetCtx:
@@ -113,8 +110,8 @@ class PVNetCtx:
             [self.symbol2idx[item] if item in (['f->A'] + self.base_grammar) else self.symbol2idx['augment'] for item in
              state_list]).to(self.device)
         seq = torch.Tensor(seq).to(self.device)
-        selection_dist_out, expand_dist_out, value_out = self.network(seq[1, :].unsqueeze(0), state_idx.unsqueeze(0))
-        return selection_dist_out, expand_dist_out, value_out
+        selection_dist_out, value_out = self.network(seq[1, :].unsqueeze(0), state_idx.unsqueeze(0))
+        return selection_dist_out, value_out
 
     def batchfy(self, seqs, states):
         for idx, seq in enumerate(seqs):

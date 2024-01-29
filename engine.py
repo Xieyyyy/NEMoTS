@@ -157,10 +157,6 @@ class Engine(object):
             kl_d_expand = self.kl_divengence(expand_dist_out, corrected_distribution)
             kl_d_expand_augment = self.kl_divengence(expand_dist_out_augment, corrected_distribution_augment)
 
-            # total_loss = self.awl(kl_d_selection, kl_d_selection_augment, mse_value, mse_value_augment, kl_d_expand,
-            #                       kl_d_expand_augment)
-            # print(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())))
-            # write_log(str((kl_d_selection.item(), mse_value.item(), kl_d_expand.item())), "./records/illness")
             total_loss = kl_d_selection + kl_d_selection_augment + 5 * (mse_value + mse_value_augment) + 10000 * (
                     kl_d_expand + kl_d_expand_augment)
             cumulative_loss += total_loss.item()
