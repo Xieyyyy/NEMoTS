@@ -7,6 +7,8 @@ import symbolics
 from mcts import MCTS
 from network import PVNetCtx
 
+import json
+
 
 class Model():
     def __init__(self, args, train=True):
@@ -75,7 +77,8 @@ class Model():
             reward_his = []  # 初始化奖励历史
             aug_grammars = []  # 初始化增强语法
 
-            mcts = MCTS(data_sample=input_data,
+            mcts = MCTS(input_data=input_data,
+                        supervision_data=None,
                         base_grammars=self.base_grammar,
                         aug_grammars=aug_grammars,
                         nt_nodes=self.nt_nodes,
@@ -122,7 +125,8 @@ class Model():
             aug_grammars = []  # 初始化增强语法
 
             for i_itr in range(self.num_transplant):
-                mcts = MCTS(data_sample=input_data,
+                mcts = MCTS(input_data=input_data,
+                            supervision_data=supervision_data,
                             base_grammars=self.base_grammar,
                             aug_grammars=aug_grammars,
                             nt_nodes=self.nt_nodes,

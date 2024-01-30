@@ -11,9 +11,11 @@ def write_log(info, file_dir):
 
 
 class MCTS():
-    def __init__(self, data_sample, base_grammars, aug_grammars, nt_nodes, max_len, max_module, aug_grammars_allowed,
+    def __init__(self, input_data, supervision_data, base_grammars, aug_grammars, nt_nodes, max_len, max_module,
+                 aug_grammars_allowed,
                  func_score, exploration_rate=1 / np.sqrt(2), eta=0.999, train=True, aug_grammar_table=None):
-        self.data_sample = data_sample
+        self.input_data = input_data
+        self.supervision_data = supervision_data if train else input_data
         self.base_grammars = base_grammars
         aug_grammars = aug_grammars if train else ["A->placeholder"]
         self.grammars = base_grammars + [x for x in aug_grammars if
@@ -157,7 +159,7 @@ class MCTS():
         # 检查是否还有剩余的非终端节点。
         if not ntn:
             # 如果没有剩余的非终端节点，那么就通过score方法计算当前状态的得分，并将状态字符串转化为等式。
-            reward, eq = self.score(self.tree_to_eq(state.split(',')), len(state.split(',')), self.data_sample,
+            reward, eq = self.score(self.tree_to_eq(state.split(',')), len(state.split(',')), self.supervision_data,
                                     eta=self.eta)
 
             # 返回新的状态，空的非终端节点列表，奖励，结束标志（为真），以及等式。
@@ -198,8 +200,10 @@ class MCTS():
 
     def nn_est_reward(self, state, network):
         reward = self.aquire_nn(state, network)[2].item()
-        eq = self.tree_to_eq(state.split(','))
-        return reward, eq
+        states = state.split(',')
+
+        eq = self.tree_to_eq(states)
+        return reward, eq.replace("A", "x")
 
     def update_ucb_mcts(self, state, action):
         """
@@ -295,7 +299,7 @@ class MCTS():
         return A
 
     def aquire_nn(self, state, network):
-        seq = self.data_sample
+        seq = self.input_data
         selection_dist_out, value_out = network.policy_value(seq, state)
         return selection_dist_out, value_out
 
@@ -369,7 +373,7 @@ class MCTS():
                 if self.train:
                     selection_policy_records.append(policy)
                     selection_state_records.append(state)
-                    selection_seq_records.append(self.data_sample)
+                    selection_seq_records.append(self.input_data)
 
                 # 执行选定的动作，获得新的状态、非终止节点、奖励、是否完成以及方程
                 next_state, ntn_next, reward, done, eq = self.step(state, action, ntn)
@@ -434,7 +438,7 @@ class MCTS():
 
                     if eq is not "" and self.train:
                         rollout_state_records.append(next_state)
-                        rollout_seq_records.append(self.data_sample)
+                        rollout_seq_records.append(self.input_data)
                         rollout_value_records.append(reward)
 
                 # 如果新的奖励大于之前最佳解的奖励，那么就更新Q/N值和最佳解

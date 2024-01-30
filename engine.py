@@ -3,7 +3,6 @@ import random
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as op
 from scipy.stats import pearsonr
@@ -17,28 +16,14 @@ def write_log(info, file_dir):
         file.write(info + '\n')
 
 
-class AutomaticWeightedLoss(nn.Module):
-    """automatically weighted multi-task loss
-    Params：
-        num: int，the number of loss
-        x: multi-task loss
-    Examples：
-        loss1=1
-        loss2=2
-        awl = AutomaticWeightedLoss(2)
-        loss_sum = awl(loss1, loss2)
-    """
+def minmax_norm(data):
+    min_val = torch.min(data)
+    max_val = torch.max(data)
+    return (data - min_val) / (max_val - min_val), min_val, max_val
 
-    def __init__(self, num=2):
-        super(AutomaticWeightedLoss, self).__init__()
-        params = torch.ones(num, requires_grad=True)
-        self.params = nn.Parameter(params)
 
-    def forward(self, *x):
-        loss_sum = 0
-        for i, loss in enumerate(x):
-            loss_sum += 0.5 / (self.params[i] ** 2) * loss + torch.log(1 + self.params[i] ** 2)
-        return loss_sum
+def inverse_min_max_normalize(normalized_data, min_val, max_val):
+    return normalized_data * (max_val - min_val) + min_val
 
 
 class Engine(object):
@@ -47,26 +32,34 @@ class Engine(object):
         self.model = Model(args)
         self.optimizer = op.Adam(self.model.pv_net_ctx.network.parameters(), lr=self.args.lr,
                                  weight_decay=self.args.weight_decay)
-        self.awl = AutomaticWeightedLoss(num=6)
 
     def train(self, data):
         self.model.train_mode = True
-        X, y = data[:, :self.args.seq_in], data[:, -self.args.seq_out:]
+        normed_data, min_val, max_val = minmax_norm(data)
+        X, y = normed_data[:, :self.args.seq_in], normed_data[:, -self.args.seq_out:]
         all_eqs, test_scores, test_data = self.model.run(X, y)
-        mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data)
+        mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data, min_val, max_val)
+        mae_pred, mse_pred, corr_pred, r_squared_pred, _ = Metrics.metrics(all_eqs, test_scores,
+                                                                           test_data[:, -self.args.seq_out:], min_val,
+                                                                           max_val)
         if all(len(data_buffer) > self.args.train_size for data_buffer in
                [self.model.data_buffer_selection, self.model.data_buffer_selection_augment,
                 self.model.data_buffer_rollout, self.model.data_buffer_rollout_augment]):
             loss = self.optimize()
-            return best_exp, test_data, loss, mae, mse, r_squared, corr
-        return best_exp, test_data, 0, mae, mse, r_squared, corr
+            return best_exp, test_data, loss, mae, mse, r_squared, corr, r_squared_pred, corr_pred
+        return best_exp, test_data, 0, mae, mse, r_squared, corr, r_squared_pred, corr_pred
 
     def eval(self, data):
         self.model.train_mode = False
-        X, y = data[:, :self.args.seq_in], data[:, -self.args.seq_out:]
+        normed_data, min_val, max_val = minmax_norm(data)
+        X, y = normed_data[:, :self.args.seq_in], normed_data[:, -self.args.seq_out:]
         all_eqs, test_scores, test_data = self.model.run(X)
-        mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data)
-        return best_exp, test_data, mae, mse, r_squared, corr
+        mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data, min_val, max_val)
+        mae_pred, mse_pred, corr_pred, r_squared_pred, _ = Metrics.metrics(all_eqs, test_scores,
+                                                                           test_data[:, -self.args.seq_out:], min_val,
+                                                                           max_val)
+
+        return best_exp, test_data, mae, mse, r_squared, corr, r_squared_pred, corr_pred
 
     @staticmethod
     def kl_divengence(P, Q):
@@ -208,22 +201,28 @@ class Engine(object):
 
 class Metrics:
     @staticmethod
-    def metrics(exps, scores, data):
+    def metrics(exps, scores, data, min_val, max_val):
         mae, mse, corr, r_squared, best_exp = None, None, 0., None, None  # 将 corr 的初始值设置为 0
         best_index = np.argmax(scores)
         best_exp = exps[best_index]
         span, gt = data
+        gt = inverse_min_max_normalize(gt, min_val.item(), max_val.item())
 
         # Replacing the lambdify function with the new lambda function
-        corrected_expression = best_exp.replace("exp", "np.exp").replace("cos", "np.cos").replace("sin",
-                                                                                                  "np.sin").replace(
-            "sqrt", "np.sqrt").replace("log", "np.log")
+        corrected_expression = best_exp. \
+            replace("exp", "np.exp"). \
+            replace("cos", "np.cos"). \
+            replace("sin", "np.sin"). \
+            replace("sqrt", "np.sqrt"). \
+            replace("log", "np.log")
         try:
             f = lambda x: eval(corrected_expression)
             prediction = f(span)
         except (ValueError, NameError):
             write_log(corrected_expression, "./records/exception_records")
             return np.nan, np.nan, np.nan, np.nan, None
+
+        prediction = inverse_min_max_normalize(prediction, min_val.item(), max_val.item())
 
         mae = np.mean(np.abs(prediction - gt))
         mse = np.mean((prediction - gt) ** 2)
