@@ -7,8 +7,6 @@ import symbolics
 from mcts import MCTS
 from network import PVNetCtx
 
-import json
-
 
 class Model():
     def __init__(self, args, train=True):

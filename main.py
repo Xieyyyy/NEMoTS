@@ -120,7 +120,7 @@ def main():
 
         torch.cuda.empty_cache()
 
-        for iter, (data, _, _, _) in enumerate(vali_loader):
+        for iter, (data, _, _, _) in enumerate(test_loader):
             iter_start_time = time.time()  # 记录迭代开始时间
 
             test_data = data[..., args.used_dimension].float()

@@ -199,7 +199,7 @@ class MCTS():
         return best_r, best_eq
 
     def nn_est_reward(self, state, network):
-        reward = self.aquire_nn(state, network)[2].item()
+        reward = self.aquire_nn(state, network)[1].item()
         states = state.split(',')
 
         eq = self.tree_to_eq(states)
