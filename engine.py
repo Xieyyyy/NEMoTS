@@ -2,10 +2,12 @@ import math
 import random
 
 import numpy as np
+import statsmodels.api as sm
 import torch
 import torch.nn.functional as F
 import torch.optim as op
 from scipy.stats import pearsonr
+from sklearn.metrics import r2_score
 from torch.distributions import Categorical
 
 from model import Model
@@ -37,17 +39,17 @@ class Engine(object):
         self.model.train_mode = True
         normed_data, min_val, max_val = minmax_norm(data)
         X, y = normed_data[:, :self.args.seq_in], normed_data[:, -self.args.seq_out:]
-        all_eqs, test_scores, test_data = self.model.run(X, y)
-        mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data, min_val, max_val)
-        mae_pred, mse_pred, corr_pred, r_squared_pred, _ = Metrics.metrics(all_eqs, test_scores,
-                                                                           test_data[:, -self.args.seq_out:], min_val,
-                                                                           max_val)
-        if all(len(data_buffer) > self.args.train_size for data_buffer in
-               [self.model.data_buffer_selection, self.model.data_buffer_selection_augment,
-                self.model.data_buffer_rollout, self.model.data_buffer_rollout_augment]):
-            loss = self.optimize()
-            return best_exp, test_data, loss, mae, mse, r_squared, corr, r_squared_pred, corr_pred
-        return best_exp, test_data, 0, mae, mse, r_squared, corr, r_squared_pred, corr_pred
+        X = np.asarray(X)
+        y = np.asarray(y)
+        X = X.flatten()
+        y = y.flatten()
+        model = sm.tsa.arima.ARIMA(X, order=(1, 1, 1))
+        fitted_model = model.fit()
+        forecast = fitted_model.forecast(steps=6)
+        r2 = r2_score(y, forecast)
+        pearson_corr, _ = pearsonr(y, forecast)
+
+        return r2, pearson_corr
 
     def eval(self, data):
         self.model.train_mode = False

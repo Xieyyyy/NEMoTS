@@ -95,17 +95,16 @@ def main():
             iter_start_time = time.time()  # 记录迭代开始时间
 
             train_data = data[..., args.used_dimension].float()
-            best_exp, test_data, loss, mae, mse, r_squared, corr, corr_pred, r_squared_pred = engine.train(train_data)
+            r2, corr = engine.train(train_data)
 
-            train_loss += loss
-            train_n_samples += 1
+            # train_loss += loss
+            # train_n_samples += 1
+            #
+            # iter_end_time = time.time()  # 记录迭代结束时间
+            # iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
 
-            iter_end_time = time.time()  # 记录迭代结束时间
-            iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
-
-            log = 'Iter: {:03d}, Time: {:.4f} sec, Train Loss: {:.4f}, Train MAE: ' \
-                  '{:.4f}, Train MSE: {:.4f}, Train R2: {:.4f}, Train CORR: {:.4f}, Train R2 Pred: {:.4f}, Train CORR Pred: {:.4f}'.format(
-                iter, iter_duration, train_loss / train_n_samples, mae, mse, r_squared, corr, r_squared_pred, corr_pred)
+            log = 'Iter: {:03d}, Train R2 Pred: {:.4f}, Train CORR Pred: {:.4f}'.format(
+                iter, r2, corr)
 
             print(log, flush=True)  # 打印日志
 
