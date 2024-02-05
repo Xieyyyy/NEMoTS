@@ -15,7 +15,7 @@ parser.add_argument("--device", type=str, default="cpu")
 # -- data processing
 parser.add_argument('--data', type=str, required=False, default='custom', help='dataset type')
 parser.add_argument('--root_path', type=str, default='./dataset/', help='root path of the data file')
-parser.add_argument('--data_path', type=str, default='illness/national_illness.csv', help='data file')
+parser.add_argument('--data_path', type=str, default='exchange_rate/exchange_rate.csv', help='data file')
 parser.add_argument('--embed', type=str, default='timeF',
                     help='time features encoding, options:[timeF, fixed, learned]')
 parser.add_argument('--freq', type=str, default='h',
@@ -42,7 +42,7 @@ parser.add_argument('--norm_threshold', type=float, default=1e-5)
 
 # -- training
 parser.add_argument("--seed", type=int, default=52, help='random seed')
-parser.add_argument("--round", type=int, default=10, help='epoch')
+parser.add_argument("--round", type=int, default=1, help='epoch')
 parser.add_argument("--epoch", type=int, default=50, help='epoch')
 parser.add_argument("--seq_in", type=int, default=30, help='length of input seq')
 parser.add_argument("--seq_out", type=int, default=6, help='length of output seq')
@@ -109,7 +109,7 @@ def main():
             print(log, flush=True)  # 打印日志
 
             if args.recording:
-                write_log(str(best_exp), "./records/" + args.tag)
+                # write_log(str(best_exp), "./records/" + args.tag)
                 write_log(str(test_data[1]), "./records/" + args.tag)
                 write_log(log, "./records/" + args.tag)  # 将含有时间消耗的日志写入文件
                 write_log("----------------------------------------", "./records/" + args.tag)
@@ -123,20 +123,19 @@ def main():
             iter_start_time = time.time()  # 记录迭代开始时间
 
             test_data = data[..., args.used_dimension].float()
-            best_exp, test_data, mae, mse, r_squared, corr, corr_pred, r_squared_pred = engine.eval(test_data)
+            r2, corr = engine.eval(test_data)
 
             iter_end_time = time.time()  # 记录迭代结束时间
             iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时
 
             # 构建日志信息，包括时间消耗
-            log = 'Iter: {:03d}, Time: {:.4f} sec, Test MAE: {:.4f}, ' \
-                  'Test MSE: {:.4f}, Test R2: {:.4f}, Test CORR: {:.4f}, Test R2 Pred: {:.4f}, Test CORR Pred: {:.4f}'.format(
-                iter, iter_duration, mae, mse, r_squared, corr, r_squared_pred, corr_pred)
+            log = 'Iter: {:03d}, Test R2 Pred: {:.4f}, Test CORR Pred: {:.4f}'.format(
+                iter, r2, corr)
 
             print(log, flush=True)  # 打印日志
 
             if args.recording:
-                write_log(str(best_exp), "./records/" + args.tag)
+                # write_log(str(best_exp), "./records/" + args.tag)
                 write_log(str(test_data[1]), "./records/" + args.tag)
                 write_log(log, "./records/" + args.tag)
                 write_log("\n", "./records/" + args.tag)
