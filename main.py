@@ -39,6 +39,7 @@ parser.add_argument('--num_aug', type=int, default=1)
 parser.add_argument('--exploration_rate', type=float, default=1 / np.sqrt(2))
 parser.add_argument('--transplant_step', type=int, default=1000)
 parser.add_argument('--norm_threshold', type=float, default=1e-5)
+parser.add_argument('--mask_ratio', type=float, default=0.2)
 
 # -- training
 parser.add_argument("--seed", type=int, default=52, help='random seed')
