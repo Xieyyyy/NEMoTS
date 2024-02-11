@@ -23,6 +23,7 @@ class Model():
         self.transplant_step = args.transplant_step
         self.norm_threshold = args.norm_threshold
         self.device = args.device
+        self.mask_ratio = args.mask_ratio
 
         # Other initializations
         self.base_grammar = symbolics.rule_map[self.symbolic_lib]
@@ -53,14 +54,17 @@ class Model():
             input_data = np.vstack([time_idx[:X.size(0)], X])
 
             supervision_data = np.vstack([time_idx, np.concatenate([X, y])])
+            cols_to_remove = np.random.choice(supervision_data.shape[1],
+                                              int(supervision_data.shape[1] * self.mask_ratio), replace=False)
+            deleted_data = np.delete(supervision_data, cols_to_remove, axis=1)
         else:
             X = X.squeeze(0)
             time_idx = np.arange(X.size(0))
             input_data = np.vstack([time_idx[:X.size(0)], X])
             supervision_data = np.vstack([time_idx, X])
 
-        all_eqs, test_scores, supervision_data = self.train(input_data,
-                                                            supervision_data) if self.train_mode else self.eval(
+        all_eqs, test_scores, deleted_data = self.train(input_data,
+                                                            deleted_data) if self.train_mode else self.eval(
             input_data)
         return all_eqs, test_scores, supervision_data
 

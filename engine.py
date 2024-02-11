@@ -39,15 +39,12 @@ class Engine(object):
         X, y = normed_data[:, :self.args.seq_in], normed_data[:, -self.args.seq_out:]
         all_eqs, test_scores, test_data = self.model.run(X, y)
         mae, mse, corr, r_squared, best_exp = Metrics.metrics(all_eqs, test_scores, test_data, min_val, max_val)
-        mae_pred, mse_pred, corr_pred, r_squared_pred, _ = Metrics.metrics(all_eqs, test_scores,
-                                                                           test_data[:, -self.args.seq_out:], min_val,
-                                                                           max_val)
         if all(len(data_buffer) > self.args.train_size for data_buffer in
                [self.model.data_buffer_selection, self.model.data_buffer_selection_augment,
                 self.model.data_buffer_rollout, self.model.data_buffer_rollout_augment]):
             loss = self.optimize()
-            return best_exp, test_data, loss, mae, mse, r_squared, corr, r_squared_pred, corr_pred
-        return best_exp, test_data, 0, mae, mse, r_squared, corr, r_squared_pred, corr_pred
+            return best_exp, test_data, loss, mae, mse, r_squared, corr
+        return best_exp, test_data, 0, mae, mse, r_squared, corr
 
     def eval(self, data):
         self.model.train_mode = False
