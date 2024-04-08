@@ -71,7 +71,8 @@ class PVNet(nn.Module):
         self.seq_lstm = TCNModel(input_size=1, output_size=16, num_channels=[16, 16, 16], kernel_size=5, dropout=0.2)
         self.mlp = nn.Sequential(nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=True),
                                  nn.ReLU(),
-                                 nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=True))
+                                 nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=True),
+                                 nn.ReLU())
 
         self.selection_dist = nn.Linear(hidden_dim * 2, len(self.grammar_vocab) - 1)
         self.value = nn.Linear(hidden_dim * 2, 1)

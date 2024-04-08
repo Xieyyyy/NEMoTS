@@ -15,7 +15,7 @@ parser.add_argument("--device", type=str, default="cpu")
 # -- data processing
 parser.add_argument('--data', type=str, required=False, default='custom', help='dataset type')
 parser.add_argument('--root_path', type=str, default='./dataset/', help='root path of the data file')
-parser.add_argument('--data_path', type=str, default='illness/national_illness.csv', help='data file')
+parser.add_argument('--data_path', type=str, default='river_flow/river_flow.csv', help='data file')
 parser.add_argument('--embed', type=str, default='timeF',
                     help='time features encoding, options:[timeF, fixed, learned]')
 parser.add_argument('--freq', type=str, default='h',
@@ -44,8 +44,8 @@ parser.add_argument('--norm_threshold', type=float, default=1e-5)
 parser.add_argument("--seed", type=int, default=52, help='random seed')
 parser.add_argument("--round", type=int, default=10, help='epoch')
 parser.add_argument("--epoch", type=int, default=50, help='epoch')
-parser.add_argument("--seq_in", type=int, default=30, help='length of input seq')
-parser.add_argument("--seq_out", type=int, default=6, help='length of output seq')
+parser.add_argument("--seq_in", type=int, default=36, help='length of input seq')
+parser.add_argument("--seq_out", type=int, default=0, help='length of output seq')
 parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
 parser.add_argument("--batch_size", type=int, default=1, help='default')
 parser.add_argument("--lr", type=float, default=1e-4, help='learning rate')
@@ -57,7 +57,7 @@ parser.add_argument("--train_size", type=float, default=64)
 
 # -- analysis
 parser.add_argument("--recording", action="store_true", default=False)
-parser.add_argument("--tag", type=str, default="illness", help='')
+parser.add_argument("--tag", type=str, default="illness")
 
 args = parser.parse_args()
 
@@ -95,7 +95,8 @@ def main():
             iter_start_time = time.time()  # 记录迭代开始时间
 
             train_data = data[..., args.used_dimension].float()
-            best_exp, test_data, loss, mae, mse, r_squared, corr, corr_pred, r_squared_pred = engine.train(train_data)
+            best_exp, test_data, loss, mae, mse, r_squared, corr, \
+            corr_pred, r_squared_pred = engine.train(train_data)
 
             train_loss += loss
             train_n_samples += 1
@@ -124,7 +125,8 @@ def main():
             iter_start_time = time.time()  # 记录迭代开始时间
 
             test_data = data[..., args.used_dimension].float()
-            best_exp, test_data, mae, mse, r_squared, corr, corr_pred, r_squared_pred = engine.eval(test_data)
+            best_exp, test_data, mae, mse, r_squared, corr, corr_pred, r_squared_pred = \
+                engine.eval(test_data)
 
             iter_end_time = time.time()  # 记录迭代结束时间
             iter_duration = iter_end_time - iter_start_time  # 计算迭代耗时

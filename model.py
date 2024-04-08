@@ -49,10 +49,11 @@ class Model():
             X = X.squeeze(0)
             y = y.squeeze(0)
 
-            time_idx = np.arange(X.size(0) + y.shape[0])
+            time_idx = np.arange(X.size(0) + y.shape[0]) if y.size(0) != X.size(0) else np.arange(X.size(0))
             input_data = np.vstack([time_idx[:X.size(0)], X])
 
-            supervision_data = np.vstack([time_idx, np.concatenate([X, y])])
+            supervision_data = np.vstack([time_idx, np.concatenate([X, y])]) if \
+                y.size(0) != X.size(0) else np.vstack([time_idx, X])
         else:
             X = X.squeeze(0)
             time_idx = np.arange(X.size(0))

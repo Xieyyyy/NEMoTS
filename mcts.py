@@ -11,9 +11,11 @@ def write_log(info, file_dir):
 
 
 class MCTS():
-    def __init__(self, input_data, supervision_data, base_grammars, aug_grammars, nt_nodes, max_len, max_module,
+    def __init__(self, input_data, supervision_data, base_grammars, aug_grammars, nt_nodes, max_len,
+                 max_module,
                  aug_grammars_allowed,
-                 func_score, exploration_rate=1 / np.sqrt(2), eta=0.999, train=True, aug_grammar_table=None):
+                 func_score, exploration_rate=1 / np.sqrt(2), eta=0.999, train=True,
+                 aug_grammar_table=None):
         self.input_data = input_data
         self.supervision_data = supervision_data if train else input_data
         self.base_grammars = base_grammars
@@ -153,7 +155,8 @@ class MCTS():
         state = state + ',' + action
         # print(state)
 
-        # 获取由新的动作产生的非终端节点，并更新ntn列表。注意，这里ntn[1:]是将原有ntn列表中的第一个元素（也就是被替换的非终端节点）去掉。
+        # 获取由新的动作产生的非终端节点，并更新ntn列表。注意，这里ntn[1:]是将原有ntn列表中的第一个元素
+        # （也就是被替换的非终端节点）去掉。
         ntn = self.get_ntn(action, action_idx) + ntn[1:]
 
         # 检查是否还有剩余的非终端节点。
@@ -276,6 +279,7 @@ class MCTS():
         for idx, a in enumerate(valid_action):
             policy_mcts = self.UCBs[state][a] / sum_ucb
             policy_valid[idx] = policy_valid[idx] * policy_mcts
+
 
         if len(set(policy_valid)) == 1:
             A = np.zeros(nA)
