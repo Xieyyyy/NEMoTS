@@ -165,7 +165,8 @@ class MCTS():
             # 返回新的状态，空的非终端节点列表，奖励，结束标志（为真），以及等式。
             return state, ntn, reward, True, eq
         else:
-            # 如果还有剩余的非终端节点，那么返回新的状态，新的非终端节点列表，奖励为0（因为还未到达终止状态），结束标志（为假），以及等式为None（因为还未到达终止状态，无法形成完整等式）。
+            # 如果还有剩余的非终端节点，那么返回新的状态，新的非终端节点列表，奖励为0（因为还未到达终止状态），结束标志（为假），以及等式为None
+            # （因为还未到达终止状态，无法形成完整等式）。
             return state, ntn, 0, False, None
 
     def rollout(self, num_play, state_initial, ntn_initial):
