@@ -7,6 +7,8 @@ import symbolics
 from mcts import MCTS
 from network import PVNetCtx
 
+import pickle
+
 
 class Model():
     def __init__(self, args, train=True):
@@ -182,5 +184,15 @@ class Model():
             print('best solution: {}'.format(score.simplify_eq(best_solution[0])))
             print('test score: {}'.format(test_score))
             print()
+
+        if self.train_mode:
+            with open("./data_buffer_selection.pkl", "wb") as f:
+                pickle.dump(self.data_buffer_selection, f)
+            with open("./data_buffer_selection_augment.pkl", "wb") as f:
+                pickle.dump(self.data_buffer_selection_augment, f)
+            with open("./data_buffer_rollout.pkl", "wb") as f:
+                pickle.dump(self.data_buffer_rollout, f)
+            with open("./data_buffer_rollout_augment.pkl", "wb") as f:
+                pickle.dump(self.data_buffer_rollout_augment, f)
 
         return all_eqs, test_scores, supervision_data
