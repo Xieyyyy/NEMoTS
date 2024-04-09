@@ -1,0 +1,19 @@
+Namespace(device=device(type='cuda', index=1), data='custom', root_path='./dataset/', data_path='electricity_demand/electricity_demand.csv', embed='timeF', freq='h', features='M', used_dimension=0, symbolic_lib='NEMoTS', max_len=20, max_module_init=10, num_transplant=2, num_runs=5, eta=1, num_aug=1, exploration_rate=0.7071067811865475, transplant_step=1000, norm_threshold=1e-05, seed=52, round=10, epoch=50, seq_in=36, seq_out=0, target='OT', batch_size=1, lr=0.0001, dropout=0.05, weight_decay=0.0001, clip=5.0, lr_decay=1, train_size=64, recording=True, tag='electricity_demand_36')
+1.0215*cos(0.551578742368256*exp(cos(0.3122*sqrt(x)))/sqrt(exp(cos(0.9172*sqrt(x)))))
+[0.61691874 0.50057429 0.38702521 0.25153741 0.14712158 0.07798184
+ 0.03459515 0.01521675 0.01313957 0.         0.01949969 0.04156999
+ 0.06523969 0.13416599 0.21889052 0.30767933 0.41683596 0.50947332
+ 0.57731748 0.64096552 0.68784291 0.73190004 0.77136672 0.79676116
+ 0.81474394 0.82892144 0.82202053 0.84388542 0.87012893 0.89513338
+ 0.92620838 0.95263493 0.96473694 1.         0.99723083 0.98627442]
+Iter: 000, Time: 548.7108 sec, Train Loss: 6365.8006, Train MAE: 70.5877, Train MSE: 7087.9608, Train R2: 0.9939, Train CORR: 0.9970, Train R2 Pred: 0.9970, Train CORR Pred: 0.9939
+----------------------------------------
+-1.501*x**0.32665 + 0.8797*x**0.484 + cos(cos(1.50356243634909*x**0.356525))
+[0.50057429 0.38702521 0.25153741 0.14712158 0.07798184 0.03459515
+ 0.01521675 0.01313957 0.         0.01949969 0.04156999 0.06523969
+ 0.13416599 0.21889052 0.30767933 0.41683596 0.50947332 0.57731748
+ 0.64096552 0.68784291 0.73190004 0.77136672 0.79676116 0.81474394
+ 0.82892144 0.82202053 0.84388542 0.87012893 0.89513338 0.92620838
+ 0.95263493 0.96473694 1.         0.99723083 0.98627442 0.9356584 ]
+Iter: 001, Time: 898.0806 sec, Train Loss: 6265.0682, Train MAE: 93.8102, Train MSE: 11367.6098, Train R2: 0.9906, Train CORR: 0.9953, Train R2 Pred: 0.9953, Train CORR Pred: 0.9906
+----------------------------------------
