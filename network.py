@@ -6,7 +6,7 @@ import torch.nn.functional as F
 class TemporalBlock(nn.Module):
     def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, dropout=0.2):
         super(TemporalBlock, self).__init__()
-        # 更新 padding
+        # padding
         padding = (kernel_size - 1) * dilation // 2
         self.conv1 = nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride, padding=padding, dilation=dilation)
         self.relu1 = nn.ReLU()
