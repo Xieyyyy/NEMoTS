@@ -15,7 +15,7 @@ parser.add_argument("--device", type=str, default="cpu")
 # -- data processing
 parser.add_argument('--data', type=str, required=False, default='custom', help='dataset type')
 parser.add_argument('--root_path', type=str, default='./dataset/', help='root path of the data file')
-parser.add_argument('--data_path', type=str, default='river_flow/river_flow.csv', help='data file')
+parser.add_argument('--data_path', type=str, default='illness/national_illness.csv', help='data file')
 parser.add_argument('--embed', type=str, default='timeF',
                     help='time features encoding, options:[timeF, fixed, learned]')
 parser.add_argument('--freq', type=str, default='h',
@@ -79,7 +79,7 @@ def write_log(info, file_dir):
 
 def main():
     train_data, train_loader = get_data(args=args, flag='train')
-    vali_data, vali_loader = get_data(args=args, flag='val')
+    # vali_data, vali_loader = get_data(args=args, flag='val')
     test_data, test_loader = get_data(args=args, flag='test')
 
     if args.recording:
